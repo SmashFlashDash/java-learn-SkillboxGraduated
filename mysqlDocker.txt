@@ -20,3 +20,6 @@ CREATE USER 'rootDocker' IDENTIFIED BY 'java';
 grant all on *.* to 'demo_java'@'%' identified by 'root';	- root это пароль
 FLUSH PRIVILEGES;
 после этого подключаться не root пользователем а 'rootDocker'
+
+# настройки БД
+SHOW STATUS;
