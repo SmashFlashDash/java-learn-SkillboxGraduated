@@ -1,0 +1,1 @@
+ALTER TABLE page ADD UNIQUE KEY path_index (path(100));

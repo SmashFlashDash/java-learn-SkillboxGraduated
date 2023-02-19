@@ -8,6 +8,9 @@ import javax.persistence.*;
 @Entity
 @Getter
 @Setter
+// hibernate не поддерживает указать длину индекса на поле TEXT
+// что обязательно в mySQL, поэтому индекс создается в schema.sql
+//@Table(indexes = @Index(columnList = "path(50)"))
 public class Page {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
