@@ -16,7 +16,7 @@ public class Page {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(nullable = false)
+    @Column(name = "siteId",nullable = false)
     Long siteId;
 
     @Column(columnDefinition = "TEXT", nullable = false)
@@ -27,4 +27,8 @@ public class Page {
 
     @Column(columnDefinition = "MEDIUMTEXT", nullable = false)
     String content;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "siteId", insertable = false, updatable = false)
+    Site siteEntity;
 }

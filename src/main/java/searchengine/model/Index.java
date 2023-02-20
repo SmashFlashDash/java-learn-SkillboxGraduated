@@ -23,4 +23,12 @@ public class Index {
     @Column(name = "`rank`", nullable = false)
     Float rank;
 
+    @ManyToOne
+    @JoinColumn(name = "pageId", insertable = false, updatable = false)
+    Page page;
+
+    @ManyToOne
+    @JoinColumn(name = "lemmaId", insertable = false, updatable = false)
+    Lemma lemma;
+
 }

@@ -23,4 +23,8 @@ public class Lemma {
     @Column(nullable = false)
     Integer frequency;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "siteId", insertable = false, updatable = false)
+    Site siteEntity;
+
 }

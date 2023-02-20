@@ -5,6 +5,7 @@ import lombok.Setter;
 
 import javax.persistence.*;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Getter
@@ -19,7 +20,7 @@ public class Site {
             nullable = false)
 //    @Column(nullable = false)
 //    @Enumerated(EnumType.STRING)
-    EnumSiteStatus status;
+            EnumSiteStatus status;
 
     @Column(nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
@@ -33,4 +34,10 @@ public class Site {
 
     @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     String name;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "siteEntity")
+    List<Page> pages;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "siteEntity")
+    List<Lemma> lemmas;
 }
