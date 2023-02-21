@@ -8,7 +8,8 @@ import javax.persistence.*;
 @Entity
 @Getter
 @Setter
-public class Lemma {
+@Table(name = "lemma")
+public class LemmaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,6 +26,6 @@ public class Lemma {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "siteId", insertable = false, updatable = false)
-    Site siteEntity;
+    SiteEntity siteEntity;
 
 }

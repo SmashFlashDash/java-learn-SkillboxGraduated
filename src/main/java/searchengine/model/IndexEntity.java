@@ -9,7 +9,7 @@ import javax.persistence.*;
 @Table(name = "`index`")
 @Getter
 @Setter
-public class Index {
+public class IndexEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
@@ -25,10 +25,10 @@ public class Index {
 
     @ManyToOne
     @JoinColumn(name = "pageId", insertable = false, updatable = false)
-    Page page;
+    PageEntity page;
 
     @ManyToOne
     @JoinColumn(name = "lemmaId", insertable = false, updatable = false)
-    Lemma lemma;
+    LemmaEntity lemma;
 
 }

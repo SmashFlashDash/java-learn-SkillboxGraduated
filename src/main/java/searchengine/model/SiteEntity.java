@@ -2,6 +2,7 @@ package searchengine.model;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
 import java.util.Date;
@@ -10,18 +11,20 @@ import java.util.List;
 @Entity
 @Getter
 @Setter
-public class Site {
+@Table(name = "site")
+public class SiteEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(columnDefinition = "ENUM('INDEXING','INDEXED','FAILED')",
-            nullable = false)
-//    @Column(nullable = false)
-//    @Enumerated(EnumType.STRING)
-            EnumSiteStatus status;
+//    @Column(columnDefinition = "ENUM('INDEXING','INDEXED','FAILED')",
+//            nullable = false)
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    EnumSiteStatus status;
 
+    @UpdateTimestamp
     @Column(nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
     Date statusTime;
@@ -35,9 +38,9 @@ public class Site {
     @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     String name;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "siteEntity")
-    List<Page> pages;
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "siteEntity", cascade = CascadeType.REMOVE)
+    List<PageEntity> pages;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "siteEntity")
-    List<Lemma> lemmas;
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "siteEntity", cascade = CascadeType.REMOVE)
+    List<LemmaEntity> lemmas;
 }
