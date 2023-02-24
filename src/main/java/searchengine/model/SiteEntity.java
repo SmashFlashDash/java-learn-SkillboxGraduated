@@ -1,6 +1,8 @@
 package searchengine.model;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -12,7 +14,14 @@ import java.util.List;
 @Getter
 @Setter
 @Table(name = "site")
+@NoArgsConstructor
 public class SiteEntity {
+
+    public SiteEntity(String name, String url, EnumSiteStatus status) {
+        this.name = name;
+        this.url = url;
+        this.status = status;
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,4 +52,5 @@ public class SiteEntity {
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "siteEntity", cascade = CascadeType.REMOVE)
     List<LemmaEntity> lemmas;
+
 }
