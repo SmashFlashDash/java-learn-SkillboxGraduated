@@ -12,4 +12,5 @@ import org.springframework.stereotype.Component;
 public class JsoupConfig {
     private String userAgent;
     private String reffer;
+    private Integer socketTimeout;
 }
