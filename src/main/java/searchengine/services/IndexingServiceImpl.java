@@ -20,8 +20,7 @@ import searchengine.repositories.SiteRepository;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +31,8 @@ public class IndexingServiceImpl implements IndexingService {
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
     private final JsoupConfig jsoupConfig;
+    private final ForkJoinPool forkJoinPool;
+
     Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     // TODO: в RecusiveAction нужно иметь доступ к сервайсу indexing
@@ -39,37 +40,8 @@ public class IndexingServiceImpl implements IndexingService {
     //  можно сделать через интерфейс indexingService или передать repository чтобы меньше зависимость
     //  можно попробовать реализовать через Spring зависимостью
 //    https://stackoverflow.com/questions/31757216/spring-cannot-propagate-transaction-to-forkjoins-recursiveaction
-//    @Configuration
-//    public class PartitionersConfig {
-//
-//        @Bean
-//        public ForkJoinPoolFactoryBean forkJoinPoolFactoryBean() {
-//            final ForkJoinPoolFactoryBean poolFactory = new ForkJoinPoolFactoryBean();
-//            return poolFactory;
-//        }
-//    }
-//    @Service
-//    @Transactional
-//    public class MyService {
-//
-//        @Autowired
-//        private OtherService otherService;
-//
-//        @Autowired
-//        private ForkJoinPool forkJoinPool;
-//
-//        @Autowired
-//        private MyDao myDao;
-//
-//        public void performPartitionedActionOnIds() {
-//            final ArrayList<UUID> ids = otherService.getIds();
-//
-//            MyIdPartitioner task = new MyIdsPartitioner(ids, myDao, 0, ids.size() - 1);
-//            forkJoinPool.invoke(task);
-//        }
-//    }
 
-//    @Transactional
+
     @Override
     public void startIndexingSites() {
         // TODO: надо индексировать сайты потоком на каждый сайт ForkJoinPool
@@ -95,29 +67,55 @@ public class IndexingServiceImpl implements IndexingService {
         deleteDataBySites(sitesList.stream().map(Site::getName).collect(Collectors.toList()));
 
         // TODO: можно использвать spring класс фабрику с настроенным ForkJoinBean
-        ForkJoinPool forkJoinPool = new ForkJoinPool();
-        List<Callable<String>> sitesThreads = new ArrayList<>();
+        List<SiteIndexingTask> sitesThreads = new ArrayList<>();
         for (Site site : sitesList) {
             SiteEntity siteEntity = new SiteEntity(site.getName(), site.getUrl(), EnumSiteStatus.INDEXING);
             saveSite(siteEntity);
             SiteIndexingTask task = new SiteIndexingTask(site.getUrl(), siteEntity, jsoupConfig, this);
             sitesThreads.add(task);
-            forkJoinPool.execute(task);     // начать выплднять задачу и не ждать join
+            // TODO: какой метод лучше вызывать
+             forkJoinPool.execute(task);     // начать выплднять задачу и не ждать join
         }
 
-//        List<Future<String>> s = forkJoinPool.invokeAll(sitesThreads);
-//        List<Future<String>> s2 = forkJoinPool.;
-//        for (Future<String> ss : s) {
+        // TODO: делать все задачи invoke медленно
+        //  можно сделать статик Set куда кидать обьекты task
+        //  обходить их здесь циклом и проверять isDone каждая таск
+        //  если is Done убрать задачу из set
+        //  сделать setter на булеан и сет таск
+        //  передать в task Boolean который останавливает индексацию определенного сайта
+        //  или в конструкторе создавать
+        //  если установить false если Exception и записать в БД статсту Failed
+        //  запретить другим изменять статус если он в entity уже Failed
+
+        for (SiteIndexingTask s: sitesThreads) {
+            s.isDone();
+        }
+
+//        List<Future<Boolean>> s = forkJoinPool.invokeAll(sitesThreads);
+//        for (Future<Boolean> ss : s) {
 //            ss.isDone();
 //        }
 
+
         // TODO: теперь надо выяснить что обработка закончена
         //  это в ForkJoin task котоырй смотрит завершились ли потоки?
+
+        // запустить поток или цикл whilt который спрашивает forkJoin завершены ли все задачи
+        // но это на все сайты вместе а не по отдельности
     }
 
     @Override
     public void stopIndexingSites() {
 
+    }
+
+    @Override
+    @Transactional
+    public void siteSetStatusIndexingStopped(SiteEntity siteEntity) {
+        if (siteEntity.getStatus() != EnumSiteStatus.STOPPED_BY_USER) {
+            siteEntity.setStatus(EnumSiteStatus.STOPPED_BY_USER);
+            siteRepository.save(siteEntity);
+        }
     }
 
     /**

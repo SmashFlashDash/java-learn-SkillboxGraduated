@@ -11,6 +11,7 @@ public interface IndexingService {
     void deleteDataBySites(List<String> siteNames);
     void saveSite(SiteEntity siteEntity);
     void savePage(PageEntity page);
+    void siteSetStatusIndexingStopped(SiteEntity siteEntity);
     boolean isPageExistByPath(String path);
     void updateSiteTimeStatus(SiteEntity site);
 }

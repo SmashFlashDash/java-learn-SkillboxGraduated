@@ -15,18 +15,19 @@ import searchengine.model.SiteEntity;
 import searchengine.services.IndexingService;
 
 import java.io.IOException;
-import java.net.URI;
+import java.net.*;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.RecursiveAction;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 //@Component
 //@Scope
 //@RequiredArgsConstructor
 // TODO: нужно ли делать callable или RecursiveTask чтобы обновлял интрефейс в процессе индексации
-public class SiteIndexingTask extends RecursiveAction implements Callable<String> {
+public class SiteIndexingTask extends RecursiveAction implements Callable<Boolean> {
 
     // TODO: можно ли внедрить service и config не делая класс Component
     //  или сделать компонентом и настроить Scope(prototype)
@@ -37,6 +38,9 @@ public class SiteIndexingTask extends RecursiveAction implements Callable<String
     private final String uriHost;
     Logger logger = LoggerFactory.getLogger(ApiController.class);
     private URI uri;
+
+    private final static AtomicBoolean run = new AtomicBoolean(true);
+//    private final static AtomicBoolean setUrls =  Collections.synchronizedSet(new HashSet<String>());
 
     public SiteIndexingTask(String uri, SiteEntity site, JsoupConfig jsoupConfig, IndexingService indexingService) {
         this.uri = URI.create(uri);
@@ -62,24 +66,20 @@ public class SiteIndexingTask extends RecursiveAction implements Callable<String
 
     @Override
     protected void compute() {
-//        logger.info("Started indexing: " + uri);
-
-        // ссылка без ? # параметров
         uri = URI.create(String.format("%s://%s%s", uri.getScheme(), uri.getAuthority(), uri.getPath()));
-        //  проверить url соответсвует ли page
-        UriType uriType = urlValidate();
-        if (!(uriType == UriType.SITE_LINK || uriType == UriType.SITE_FILE)) {
-//            logger.info("Не парсим " + urlType.toString() + ": " + uri.toString());
-            return;
-        }
-        // TODO: нет ли ссылки в таблице || проверить парсится ли ссылка
-        // можно добавить synchronized обьект на setUrls
-        if (indexingService.isPageExistByPath(uri.toString())) {
-//            logger.info("Не парсим ссылка в таблице: " + uri.toString());
-            return;
-        }
         if (!setUrls.add(uri.toString())) {
-//            logger.info("Не парсим ссылка в сете: " + uri.toString());
+            return;
+        }
+
+        UriType uriType = urlValidate();
+        if (!(uriType == UriType.SITE_LINK)) {
+//            logger.info("Не парсим " + urlType.toString() + ": " + uri.toString());
+            setUrls.remove(uri.toString());
+            return;
+        }
+        if (!run.get()) {
+            logger.info("Остановим таску: " + Thread.currentThread());
+            indexingService.siteSetStatusIndexingStopped(site);
             return;
         }
 
@@ -106,50 +106,62 @@ public class SiteIndexingTask extends RecursiveAction implements Callable<String
             indexingService.savePage(page);
             setUrls.remove(uri.toString());
 
-            if (uriType == UriType.SITE_LINK) {
-                for (Element link : doc.select("a[href]")) {
-                    URI newUri = URI.create(link.attr("abs:href"));
-                    SiteIndexingTask task = new SiteIndexingTask(newUri, this);
-                    task.fork();
-                }
+            for (Element link : doc.select("a[href]")) {
+                URI newUri = URI.create(link.attr("abs:href"));
+                SiteIndexingTask task = new SiteIndexingTask(newUri, this);
+                task.fork();
+//                task.join();
+//                task.invoke();
             }
+
         } catch (HttpStatusException e) {
             page.setContent("");
             page.setCode(e.getStatusCode());
             indexingService.savePage(page);
             setUrls.remove(uri.toString());
         } catch (UnsupportedMimeTypeException e) {
-            logger.info("File: ".concat(uri.toString()));
-        } catch (IOException | InterruptedException e) {
+            logger.info("Link is file: ".concat(uri.toString()));
+        } catch (MalformedURLException e) {
+            logger.info("MalformedURLException: ".concat(uri.toString()));
+        } catch (SocketTimeoutException e) {
+            logger.info("SocketTimeoutException: ".concat(uri.toString()));
+        // } catch (SocketException | UnknownHostException e) {
+        //     logger.info("No Connection: ".concat(uri.toString()));
+        }
+        catch (IOException | InterruptedException e) {
             // TODO: установить статуст ошибки page
-            e.printStackTrace();
+//            e.printStackTrace();
+            logger.error("Err: ".concat(uri.toString()));
         }
         // TODO: теперь надо как-то выяснить что обработка закончена
         //  это в ForkJoin task котоырй смотрит завершились ли потоки?
 
     }
 
-    /**
-     * вызвать сервис у которого аннотация transactional
-     */
-    private void writeToDB() {
+//    @Override
+//    public String call() {
+//        return null;
+//    }
 
-    }
-
-    @Override
-    public String call() throws Exception {
-        return null;
-    }
-
+    // TODO: может быть слабое место что надо заносить ссылку в setUrls в начале compute, после отброса query
+    //  затем если есть в таблце убрать из set
     private UriType urlValidate() {
         if (!uri.getScheme().startsWith("http")) {
             return UriType.NOT_LINK;
         } else if (!(uri.getHost().equals(uriHost) || uri.getHost().endsWith(".".concat(uriHost)))) {
             return UriType.OTHER_SITE_LINK;
             // TODO: можено через uri.toUrl().getContent().getType(), но это делается в Jsoup
-//        } else if (!(uri.getPath().endsWith("/") || uri.getPath().endsWith(".html"))) {
-//            return UriType.SITE_FILE;
+            // } else if (!(uri.getPath().endsWith("/") || uri.getPath().endsWith(".html"))) {
+            //     return UriType.SITE_FILE;
+        } else if (indexingService.isPageExistByPath(uri.toString())) {
+            return UriType.LINK_IN_TABLE;
         }
         return UriType.SITE_LINK;
+    }
+
+    @Override
+    public Boolean call() throws Exception {
+        this.compute();
+        return true;
     }
 }
