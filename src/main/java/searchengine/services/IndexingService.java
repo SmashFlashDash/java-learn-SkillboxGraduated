@@ -1,15 +1,14 @@
 package searchengine.services;
 
-import searchengine.dto.indexing.StartIndexingResponse;
+import searchengine.dto.indexing.IndexingResponse;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 
 import java.util.List;
 
 public interface IndexingService {
-    StartIndexingResponse startIndexingSites();
-    boolean stopIndexingSites();
-    void deleteDataBySites(List<String> siteNames);
+    IndexingResponse startIndexingSites();
+    IndexingResponse stopIndexingSites();
     void saveSite(SiteEntity siteEntity);
     void savePage(PageEntity page);
     boolean isPageExistByPath(String path);

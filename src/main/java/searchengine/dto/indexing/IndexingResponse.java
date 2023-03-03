@@ -6,10 +6,10 @@ import lombok.RequiredArgsConstructor;
 
 @Data
 @AllArgsConstructor
-public class StartIndexingResponse {
+public class IndexingResponse {
     private boolean result;
     private String error;
 
-    public StartIndexingResponse(boolean b) {
+    public IndexingResponse(boolean b) {
     }
 }

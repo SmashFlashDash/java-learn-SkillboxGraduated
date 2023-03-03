@@ -10,7 +10,7 @@ import searchengine.config.JsoupConfig;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.controllers.ApiController;
-import searchengine.dto.indexing.StartIndexingResponse;
+import searchengine.dto.indexing.IndexingResponse;
 import searchengine.model.EnumSiteStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
@@ -20,8 +20,6 @@ import searchengine.repositories.SiteRepository;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 
 @Service
@@ -37,14 +35,14 @@ public class IndexingServiceImplInvoke implements IndexingService {
     Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     @Override
-    public StartIndexingResponse startIndexingSites() {
+    public IndexingResponse startIndexingSites() {
         List<Site> sitesList = sites.getSites();
         if (!indexingTasks.isEmpty()) {
             logger.error(String.format("Индексация уже запущена: %s", indexingTasks));
-            return new StartIndexingResponse(false, "Индексация уже запущена");
+            return new IndexingResponse(false, "Индексация уже запущена");
         } else if (sitesList.isEmpty()) {
             logger.error(String.format("В конфиге не указаны сайты: %s", indexingTasks));
-            return new StartIndexingResponse(false, "В конфигурации не указаны сайты для индексировния");
+            return new IndexingResponse(false, "В конфигурации не указаны сайты для индексировния");
         }
 
         List<Thread> threads = new ArrayList<>();
@@ -55,7 +53,7 @@ public class IndexingServiceImplInvoke implements IndexingService {
                 URL uri = new URL(site.getUrl());
                 task = new SiteIndexingTaskInvoke(uri, siteEntity, site.getMillis(), jsoupConfig, this);
             } catch (MalformedURLException e) {
-                return new StartIndexingResponse(false, "В конфигурации ошибка некорректный url: ".concat(site.getUrl()));
+                return new IndexingResponse(false, "В конфигурации некорректный url: ".concat(site.getUrl()));
             }
             siteRepository.deleteByName(site.getName());
             saveSite(siteEntity);
@@ -77,31 +75,27 @@ public class IndexingServiceImplInvoke implements IndexingService {
                         saveSite(siteEntity);
                     }
             }));
-
         }
         threads.forEach(Thread::start);
-        return new StartIndexingResponse(true);
+        return new IndexingResponse(true);
     }
 
     @Override
-    public boolean stopIndexingSites() {
+    public IndexingResponse stopIndexingSites() {
         if (indexingTasks.isEmpty()) {
-            return false;
+            return new IndexingResponse(false, "Индексация не запущена");
         }
         indexingTasks.forEach(SiteIndexingTaskInvoke::stopCompute);
-        return true;
+        return new IndexingResponse(true);
     }
 
-    /**
-     * получить id сайта по названию в таблице Sites и по этому id стереть Page
-     * если свзяать поля Cascade то можно удалить только по id в site
-     */
-    @Override
-    @Transactional
-    public void deleteDataBySites(List<String> siteNames) {
-        siteRepository.deleteAllByNameIn(siteNames);
-    }
+//    @Override
+//    @Transactional
+//    public void deleteDataBySites(List<String> siteNames) {
+//        siteRepository.deleteAllByNameIn(siteNames);
+//    }
 
+    // TODO: вылетает ошибка но не падает при сейве определенных Entity
     @Override
     public synchronized void saveSite(SiteEntity siteEntity) {
         try {
@@ -112,7 +106,7 @@ public class IndexingServiceImplInvoke implements IndexingService {
 
     }
 
-    // TODO: можно замутить batch insert
+    // TODO: можно сделать batch insert
     //  складывать все и flush как закончится парсинг
     //  но тогда проверять page в таблице надо еще и в batch
     @Override

@@ -10,7 +10,7 @@ import searchengine.config.JsoupConfig;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.controllers.ApiController;
-import searchengine.dto.indexing.StartIndexingResponse;
+import searchengine.dto.indexing.IndexingResponse;
 import searchengine.model.EnumSiteStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
@@ -45,19 +45,19 @@ public class IndexingServiceImpl implements IndexingService {
      * @return
      */
     @Override
-    public StartIndexingResponse startIndexingSites() {
+    public IndexingResponse startIndexingSites() {
         if (!sitesThreads.isEmpty()) {
             logger.error(String.format("Индексация уже запущена: %s", sitesThreads));
-            return new StartIndexingResponse(false, "Индексация уже запущена");
+            return new IndexingResponse(false, "Индексация уже запущена");
         }
 
         List<Site> sitesList = sites.getSites();
         if (!sitesList.isEmpty()) {
             // TODO: вернуть кол-во удаленных записей @Modified
-            deleteDataBySites(sitesList.stream().map(Site::getName).collect(Collectors.toList()));
+            // deleteDataBySites(sitesList.stream().map(Site::getName).collect(Collectors.toList()));
         } else {
             logger.error(String.format("В конфиге не указаны сайты: %s", sitesThreads));
-            return new StartIndexingResponse(false, "В конфигурации не указаны сайты для индексировния");
+            return new IndexingResponse(false, "В конфигурации не указаны сайты для индексировния");
         }
 
         for (Site site : sitesList) {
@@ -82,24 +82,14 @@ public class IndexingServiceImpl implements IndexingService {
             });
             forkJoinPool.execute(task);     // начать выплднять задачу и не ждать join
         }
-        return new StartIndexingResponse(true);
+        return new IndexingResponse(true);
     }
 
     @Override
-    public boolean stopIndexingSites() {
+    public IndexingResponse stopIndexingSites() {
         sitesThreads.forEach(SiteIndexingTask::stopCompute);
         sitesThreads.clear();
-        return true;
-    }
-
-    /**
-     * получить id сайта по названию в таблице Sites и по этому id стереть Page
-     * если свзяать поля Cascade то можно удалить только по id в site
-     */
-    @Override
-    @Transactional
-    public void deleteDataBySites(List<String> siteNames) {
-        siteRepository.deleteAllByNameIn(siteNames);
+        return new IndexingResponse(true);
     }
 
     @Override
@@ -107,7 +97,7 @@ public class IndexingServiceImpl implements IndexingService {
         siteRepository.save(siteEntity);
     }
 
-    // TODO: можно замутить batch insert
+    // TODO: можно сделать batch insert
     //  складывать все и flush как закончится парсинг
     //  но тогда проверять page в таблице надо еще и в batch
     @Override
