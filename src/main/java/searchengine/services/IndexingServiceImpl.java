@@ -93,6 +93,11 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     @Override
+    public IndexingResponse pageIndexing(String url) {
+        return null;
+    }
+
+    @Override
     public void saveSite(SiteEntity siteEntity) {
         siteRepository.save(siteEntity);
     }

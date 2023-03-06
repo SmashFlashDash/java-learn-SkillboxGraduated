@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import searchengine.classes.SiteIndexingTaskInvoke;
 import searchengine.config.JsoupConfig;
 import searchengine.config.Site;
@@ -55,11 +54,13 @@ public class IndexingServiceImplInvoke implements IndexingService {
             } catch (MalformedURLException e) {
                 return new IndexingResponse(false, "В конфигурации некорректный url: ".concat(site.getUrl()));
             }
-            siteRepository.deleteByName(site.getName());
-            saveSite(siteEntity);
+            //siteRepository.deleteByName(site.getName());
+            //saveSite(siteEntity);
             indexingTasks.add(task);
 
             threads.add(new Thread(() -> {
+                siteRepository.deleteByName(site.getName());
+                saveSite(siteEntity);
                 Boolean res;
                 try {
                     res = forkJoinPool.invoke(task);
@@ -69,11 +70,11 @@ public class IndexingServiceImplInvoke implements IndexingService {
                     siteEntity.setStatus(EnumSiteStatus.FAILED);
                     saveSite(siteEntity);
                 }
-                    indexingTasks.remove(task);
-                    if (res) {
-                        siteEntity.setStatus(EnumSiteStatus.INDEXED);
-                        saveSite(siteEntity);
-                    }
+                indexingTasks.remove(task);
+                if (res) {
+                    siteEntity.setStatus(EnumSiteStatus.INDEXED);
+                    saveSite(siteEntity);
+                }
             }));
         }
         threads.forEach(Thread::start);
@@ -89,7 +90,40 @@ public class IndexingServiceImplInvoke implements IndexingService {
         return new IndexingResponse(true);
     }
 
-//    @Override
+    @Override
+    public IndexingResponse pageIndexing(String url) {
+        // TODO: должен ли рабоать когда запущена индексация
+        //  вернуть ошибку если домен сайта не из Jsoup конфига
+        //  можно ли в Jsoup config сразу сделать URI из String
+        // должен ли SiteIndexingResponse включать функционал PageIndexing
+        //  default значение в Entity таблицы lemma
+        // в таблицу lemma добавляются связки lemma страница
+        if (!indexingTasks.isEmpty()) {
+            return new IndexingResponse(false, "Индексация запущена");
+        }
+
+        try {
+            URL uri = new URL(url);
+            SiteEntity ss = new SiteEntity();
+            for (Site s : sites.getSites()) {
+                if (s.getUrl().contains(uri.getHost())) {
+                    siteRepository.findAllByNameIn(Arrays.asList(s.getName()));
+                    siteRepository.findByName(s.getName());
+
+                    ss.setName(s.getName());
+                    ss.setUrl(s.getUrl());
+                    break;
+                }
+            }
+        } catch (MalformedURLException e) {
+            return new IndexingResponse(false, "Некорректный url: ".concat(url));
+        }
+
+
+        return new IndexingResponse(false);
+    }
+
+    //    @Override
 //    @Transactional
 //    public void deleteDataBySites(List<String> siteNames) {
 //        siteRepository.deleteAllByNameIn(siteNames);

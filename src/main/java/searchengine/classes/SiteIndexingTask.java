@@ -133,8 +133,8 @@ public class SiteIndexingTask extends RecursiveAction {
             return;
         }
 
-        UriType uriType = urlValidate();
-        if (!(uriType == UriType.SITE_PAGE)) {
+        UrlType uriType = urlValidate();
+        if (!(uriType == UrlType.SITE_PAGE)) {
             indexingUrisSet.remove(uri.toString());
             return;
         }
@@ -194,17 +194,17 @@ public class SiteIndexingTask extends RecursiveAction {
 
     // TODO: может быть слабое место что надо заносить ссылку в setUrls в начале compute, после отброса query
     //  затем если есть в таблце убрать из set
-    private UriType urlValidate() {
+    private UrlType urlValidate() {
         if (!uri.getScheme().startsWith("http")) {
-            return UriType.NOT_LINK;
+            return UrlType.NOT_LINK;
         } else if (!(uri.getHost().equals(uriHost) || uri.getHost().endsWith(".".concat(uriHost)))) {
-            return UriType.OTHER_SITE;
+            return UrlType.OTHER_SITE;
             // TODO: можено через uri.toUrl().getContent().getType(), но это делается в Jsoup
             // } else if (!(uri.getPath().endsWith("/") || uri.getPath().endsWith(".html"))) {
             //     return UriType.SITE_FILE;
         } else if (indexingService.isPageExistByPath(uri.toString())) {
-            return UriType.PAGE_IN_TABLE;
+            return UrlType.PAGE_IN_TABLE;
         }
-        return UriType.SITE_PAGE;
+        return UrlType.SITE_PAGE;
     }
 }

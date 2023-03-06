@@ -9,6 +9,7 @@ import javax.persistence.*;
 @Getter
 @Setter
 @Table(name = "lemma")
+// TODO: должен быть уникальный по siteId и lemma
 public class LemmaEntity {
 
     @Id

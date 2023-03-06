@@ -38,8 +38,8 @@ public class SiteIndexingTaskInvoke extends RecursiveTask<Boolean> {
     private final String uriHost;
     private final AtomicBoolean run;
     private final AtomicBoolean isComputed;
-    Logger logger = LoggerFactory.getLogger(ApiController.class);
     private final URL url;
+    Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     /**
      * Создать рекурсивную задачу
@@ -87,85 +87,34 @@ public class SiteIndexingTaskInvoke extends RecursiveTask<Boolean> {
         }
     }
 
-    /**
-     * когда дойдет до последнего потока и не создат новых задач все обьекты в subTasks будут Done
-     * это считается что индексакция завершена
-     */
     @Override
     protected Boolean compute() {
         // проверка что не обрабаытвается в другом потоке и добавляем в set
         if (!indexingUrisSet.add(url.toString())) {
             return true;
-        }
-        if (!run.get()) {
+        } else if (!run.get()) {
             return false;
         }
-
-        UriType uriType;
-//        if (!uri.getProtocol().startsWith("http")) {
-//            uriType = UriType.NOT_LINK;
-//        } else
-         if (!(url.getHost().equals(uriHost) || url.getHost().endsWith(".".concat(uriHost)))) {
-            uriType = UriType.OTHER_SITE;
-        } else if (url.getPath().contains(".") && !url.getPath().endsWith(".html")) {
-            uriType = UriType.SITE_FILE;
-            // logger.warn(String.format("File: %s", uri.toString()));
-        } else if (indexingService.isPageExistByPath(url.toString())) {
-            uriType = UriType.PAGE_IN_TABLE;
-        } else {
-            uriType = UriType.SITE_PAGE;
-        }
-        if (!(uriType == UriType.SITE_PAGE)) {
-            indexingUrisSet.remove(url.toString());
+        UrlType uriType = validateUrl();
+        if (!(uriType == UrlType.SITE_PAGE)) {
+            //indexingUrisSet.remove(url.toString());
             return true;
-        }
-        // пауза на connection в соответсвии с конфигом
-        if (millis != null) {
-            try {
-                Thread.sleep(millis);
-            } catch (InterruptedException e) {
-                logger.error(e.getClass().getName().concat(": ").concat(e.getMessage()));
-            }
         }
 
         // сущность страницы
         PageEntity page = new PageEntity();
         page.setPath(url.toString());
         page.setSiteId(site.getId());
-        // подключение
-        Connection.Response res;
         Document doc;
         try {
-            res = Jsoup.connect(url.toString())
-                    .userAgent(jsoupConfig.getUserAgent())
-                    .referrer(jsoupConfig.getReffer())
-                    .timeout(jsoupConfig.getSocketTimeout())
-                    .method(Connection.Method.GET)
-                    .execute();
-            doc = res.parse();
-        }
-        catch (HttpStatusException e) {
-            page.setContent("");
-            page.setCode(e.getStatusCode());
-            indexingService.savePage(page);
+            doc = jsoupGetDocument(page);
+        } catch (HttpStatusException | UnsupportedMimeTypeException | MalformedURLException e) {
             indexingUrisSet.remove(url.toString());
             return true;
-        } catch (UnsupportedMimeTypeException | MalformedURLException e) {
-            // logger.warn(e.getClass().getName().concat(": ").concat(uri.toString()));
-            indexingUrisSet.remove(url.toString());
-            return true;
-        }
-        // catch (SocketTimeoutException | SocketException | UnknownHostException e) {
-        catch (IOException e) {
-            logger.error(e.getClass().getName().concat(": ").concat(e.getMessage()).concat(" --- ").concat(url.toString()));
-            run.set(false);
-            site.setStatus(EnumSiteStatus.FAILED);
-            site.setLastError(e.getClass().getName().concat(": ").concat(e.getMessage()).concat(" --- ").concat(url.toString()));
-            indexingService.saveSite(site);
+        } catch (IOException e) {
             indexingUrisSet.remove(url.toString());
             return false;
         }
-        //засэйвить страницу
         page.setContent(doc.outerHtml());
         page.setCode(doc.connection().response().statusCode());
         indexingService.saveSite(site);
@@ -179,12 +128,63 @@ public class SiteIndexingTaskInvoke extends RecursiveTask<Boolean> {
             Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
             // TODO: в базу вставить batch
             //  это надо делать уже в методе сервиса, с авто генерацией id и меод должен быть sycnhronized
-
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         // обход ссылок и вернуть результат по ним
+        List<SiteIndexingTaskInvoke> tasks = walkSiteLinks(doc);
+        return tasks.stream().allMatch(ForkJoinTask::join);
+    }
+
+    private UrlType validateUrl() {
+        if (!(url.getHost().equals(uriHost) || url.getHost().endsWith(".".concat(uriHost)))) {
+            return UrlType.OTHER_SITE;
+        } else if (url.getPath().contains(".") && !url.getPath().endsWith(".html")) {
+            // logger.warn(String.format("File: %s", uri.toString()));
+            return UrlType.SITE_FILE;
+        } else if (indexingService.isPageExistByPath(url.toString())) {
+            return UrlType.PAGE_IN_TABLE;
+        } else {
+            return UrlType.SITE_PAGE;
+        }
+    }
+
+    private Document jsoupGetDocument(PageEntity page) throws IOException {
+        if (millis != null) {
+            try {
+                Thread.sleep(millis);
+            } catch (InterruptedException e) {
+                logger.error(e.getClass().getName().concat(": ").concat(e.getMessage()));
+            }
+        }
+        try {
+            return Jsoup.connect(url.toString())
+                    .userAgent(jsoupConfig.getUserAgent())
+                    .referrer(jsoupConfig.getReffer())
+                    .timeout(jsoupConfig.getSocketTimeout())
+                    .method(Connection.Method.GET)
+                    .execute().parse();
+        } catch (HttpStatusException e) {
+            page.setContent("");
+            page.setCode(e.getStatusCode());
+            indexingService.savePage(page);
+            throw e;
+        } catch (UnsupportedMimeTypeException | MalformedURLException e) {
+            // logger.warn(e.getClass().getName().concat(": ").concat(uri.toString()));
+            throw e;
+        }
+        catch (IOException e) { // catch (SocketTimeoutException | SocketException | UnknownHostException e) {
+            logger.error(e.getClass().getName().concat(": ").concat(e.getMessage()).concat(" --- ").concat(url.toString()));
+            run.set(false);
+            site.setStatus(EnumSiteStatus.FAILED);
+            site.setLastError(e.getClass().getName().concat(": ").concat(e.getMessage()).concat(" --- ").concat(url.toString()));
+            indexingService.saveSite(site);
+            throw e;
+        }
+    }
+
+    private List<SiteIndexingTaskInvoke> walkSiteLinks(Document doc) {
         List<SiteIndexingTaskInvoke> tasks = new ArrayList<>();
         for (Element link : doc.select("a[href]")) {
             String uriString = link.attr("abs:href");
@@ -199,6 +199,8 @@ public class SiteIndexingTaskInvoke extends RecursiveTask<Boolean> {
             tasks.add(task);
             task.fork();
         }
-        return tasks.stream().allMatch(ForkJoinTask::join);
+        return tasks;
     }
+
+
 }

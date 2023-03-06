@@ -9,6 +9,7 @@ import java.util.List;
 public interface IndexingService {
     IndexingResponse startIndexingSites();
     IndexingResponse stopIndexingSites();
+    IndexingResponse pageIndexing(String url);
     void saveSite(SiteEntity siteEntity);
     void savePage(PageEntity page);
     boolean isPageExistByPath(String path);
