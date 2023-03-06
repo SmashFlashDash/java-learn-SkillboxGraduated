@@ -172,6 +172,18 @@ public class SiteIndexingTaskInvoke extends RecursiveTask<Boolean> {
         indexingService.savePage(page);
         indexingUrisSet.remove(url.toString());
 
+        // TODO: получить текст с элементов без тэгов
+        try {
+            LemmaFinder lf = LemmaFinder.getInstance();
+            // Map<String, Integer> lemmas = lf.collectLemmas(doc.select("p, ul, li, br, div, h1, h2, h3, h4, h5, h6").text());
+            Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
+            // TODO: в базу вставить batch
+            //  это надо делать уже в методе сервиса, с авто генерацией id и меод должен быть sycnhronized
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         // обход ссылок и вернуть результат по ним
         List<SiteIndexingTaskInvoke> tasks = new ArrayList<>();
         for (Element link : doc.select("a[href]")) {
