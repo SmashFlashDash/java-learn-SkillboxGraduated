@@ -1,9 +1,13 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import org.jsoup.HttpStatusException;
+import org.jsoup.UnsupportedMimeTypeException;
+import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import searchengine.classes.LemmaFinder;
 import searchengine.classes.SiteIndexingTaskInvoke;
 import searchengine.config.JsoupConfig;
 import searchengine.config.Site;
@@ -16,6 +20,7 @@ import searchengine.model.SiteEntity;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
@@ -33,6 +38,7 @@ public class IndexingServiceImplInvoke implements IndexingService {
     private final Set<SiteIndexingTaskInvoke> indexingTasks = Collections.synchronizedSet(new HashSet<>());
     Logger logger = LoggerFactory.getLogger(ApiController.class);
 
+    // TODO: indexingService можно внедриь в task Autowired сделав SCope prototype
     @Override
     public IndexingResponse startIndexingSites() {
         List<Site> sitesList = sites.getSites();
@@ -91,7 +97,7 @@ public class IndexingServiceImplInvoke implements IndexingService {
     }
 
     @Override
-    public IndexingResponse pageIndexing(String url) {
+    public IndexingResponse pageIndexing(String urlString) {
         // TODO: должен ли рабоать когда запущена индексация
         //  вернуть ошибку если домен сайта не из Jsoup конфига
         //  можно ли в Jsoup config сразу сделать URI из String
@@ -102,22 +108,101 @@ public class IndexingServiceImplInvoke implements IndexingService {
             return new IndexingResponse(false, "Индексация запущена");
         }
 
-        try {
-            URL uri = new URL(url);
-            SiteEntity ss = new SiteEntity();
-            for (Site s : sites.getSites()) {
-                if (s.getUrl().contains(uri.getHost())) {
-                    siteRepository.findAllByNameIn(Arrays.asList(s.getName()));
-                    siteRepository.findByName(s.getName());
 
-                    ss.setName(s.getName());
-                    ss.setUrl(s.getUrl());
-                    break;
-                }
-            }
+        URL url;
+        try {
+            url = new URL(urlString);
+            // UrlType urlType;
+            // if (!(url.getHost().equals(uriHost) || url.getHost().endsWith(".".concat(uriHost)))) {
+            //     return UrlType.OTHER_SITE;
+            // } else if (url.getPath().contains(".") && !url.getPath().endsWith(".html")) {
+            //     // logger.warn(String.format("File: %s", uri.toString()));
+            //     return UrlType.SITE_FILE;
+            // } else if (indexingService.isPageExistByPath(url.toString())) {
+            //     return UrlType.PAGE_IN_TABLE;
+            // } else {
+            //     return UrlType.SITE_PAGE;
+            // }
         } catch (MalformedURLException e) {
-            return new IndexingResponse(false, "Некорректный url: ".concat(url));
+            return new IndexingResponse(false, "Некорректный url: ".concat(urlString));
         }
+        // String uriHost = url.getHost();
+        // uriHost = uriHost.startsWith("www.") ? uriHost.substring(4) : uriHost;
+        final String uriHost = url.getHost().startsWith("www.") ? url.getHost().substring(4) : url.getHost();
+        List<Site> sitesList = sites.getSites();
+        Site site = sitesList.stream().filter(s -> s.getUrl().contains(uriHost)).findAny().orElse(null);
+        if (site == null) {
+            return new IndexingResponse(false, "Сайт не задан в конфигурации");
+        }
+        // TODO: можно вынести в класс парсер куда передается url, domain, конфиг Jsoup, сделать его scope prototype
+        //  и использовать его в invoke
+
+        // найти siteEntity по обьекту site можно вынести в метод создать обьект site
+        // если нет создать
+        SiteEntity siteEntity = siteRepository.findByName(site.getName());
+        if (siteEntity == null) {
+            siteEntity = new SiteEntity(site.getName(), site.getUrl(), EnumSiteStatus.INDEXED);
+            saveSite(siteEntity);   // обнновить время статуса
+        } else {
+            // siteEntity.setStatus(EnumSiteStatus.INDEXING);
+        }
+
+        // создадим страницу для индексации
+        // также ее надо найти и заменяь параметры
+        PageEntity pageEntity = pageRepository.findByPath(url.toString());
+        if (pageEntity == null) {
+            pageEntity = new PageEntity();
+            pageEntity.setPath(url.toString());
+            pageEntity.setSiteId(siteEntity.getId());
+        }
+
+        Document doc;
+        try {
+            doc = jsoupConfig.getJsoupDocument(url.toString());
+            pageEntity.setContent(doc.outerHtml());
+            pageEntity.setCode(doc.connection().response().statusCode());
+            saveSite(siteEntity);   // обнновить время статуса
+            savePage(pageEntity);   // засейвить страницу
+        } catch (HttpStatusException e) {
+            pageEntity.setContent("");
+            pageEntity.setCode(e.getStatusCode());
+            savePage(pageEntity);
+            return new IndexingResponse(false, "Ошибка в переданои url");
+        } catch (UnsupportedMimeTypeException | MalformedURLException e) {
+            // logger.warn(e.getClass().getName().concat(": ").concat(uri.toString()));
+            return new IndexingResponse(false, "Ошибка в переданои url");
+        } catch (IOException e) { // catch (SocketTimeoutException | SocketException | UnknownHostException e) {
+            // logger.error(e.getClass().getName().concat(": ").concat(e.getMessage()).concat(" --- ").concat(url.toString()));
+            siteEntity.setStatus(EnumSiteStatus.FAILED);
+            siteEntity.setLastError(e.getClass().getName().concat(": ").concat(e.getMessage()).concat(" --- ").concat(url.toString()));
+            saveSite(siteEntity);
+            return new IndexingResponse(false, "Ошибка в переданои url");
+        }
+
+        // TODO: получить текст с элементов без тэгов
+        try {
+            LemmaFinder lf = LemmaFinder.getInstance();
+            // Map<String, Integer> lemmas = lf.collectLemmas(doc.select("p, ul, li, br, div, h1, h2, h3, h4, h5, h6").text());
+            Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
+
+            // TODO: в базу вставить batch
+            //  это надо делать уже в методе сервиса, с авто генерацией id и меод должен быть sycnhronized
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+//            SiteEntity ss = new SiteEntity();
+//            for (Site s : sites.getSites()) {
+//                if (s.getUrl().contains(uri.getHost())) {
+//                    siteRepository.findAllByNameIn(Arrays.asList(s.getName()));
+//                    siteRepository.findByName(s.getName());
+//
+//                    ss.setName(s.getName());
+//                    ss.setUrl(s.getUrl());
+//                    break;
+//                }
+//            }
 
 
         return new IndexingResponse(false);
@@ -159,4 +244,12 @@ public class IndexingServiceImplInvoke implements IndexingService {
     public Integer countPages() {
         return pageRepository.findAll().size();
     }
+
+    public void savePageLemmas(PageEntity pageEntity, Map<String, Integer> lemmas) {
+//        lemmas.entrySet().stream();
+//        for (Entry<String, Integer> lem : lemmas.entrySet()) {
+//
+//        }
+    }
+
 }
