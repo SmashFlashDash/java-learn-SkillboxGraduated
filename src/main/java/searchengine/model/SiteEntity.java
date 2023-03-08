@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -47,10 +48,9 @@ public class SiteEntity {
     @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     String name;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "siteEntity", cascade = CascadeType.REMOVE)
+    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
     List<PageEntity> pages;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "siteEntity", cascade = CascadeType.REMOVE)
+    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
     List<LemmaEntity> lemmas;
-
 }

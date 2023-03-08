@@ -6,29 +6,24 @@ import lombok.Setter;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "`index`")
 @Getter
 @Setter
+@Table(name = "`index`",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"page_id", "lemma_id"})
+)
 public class IndexEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(nullable = false)
-    Long pageId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "page_id", nullable = false)
+    PageEntity page;
 
-    @Column(nullable = false)
-    Long lemmaId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lemma_id", nullable = false)
+    LemmaEntity lemma;
 
     @Column(name = "`rank`", nullable = false)
     Float rank;
-
-    @ManyToOne
-    @JoinColumn(name = "pageId", insertable = false, updatable = false)
-    PageEntity page;
-
-    @ManyToOne
-    @JoinColumn(name = "lemmaId", insertable = false, updatable = false)
-    LemmaEntity lemma;
-
 }

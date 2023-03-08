@@ -28,6 +28,7 @@ spring:
     password: pass
     url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requir
       eSSL=false&allowPublicKeyRetrieval=true
+    separator: ^;
   jpa:
     properties:
       hibernate:

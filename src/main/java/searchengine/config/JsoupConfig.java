@@ -19,6 +19,22 @@ public class JsoupConfig {
     private String reffer;
     private Integer socketTimeout;
 
+    public Document getJsoupDocument(String url, Integer millis) throws IOException {
+        if (millis != null) {
+            try {
+                Thread.sleep(millis);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        return Jsoup.connect(url)
+                .userAgent(getUserAgent())
+                .referrer(getReffer())
+                .timeout(getSocketTimeout())
+                .method(Connection.Method.GET)
+                .execute().parse();
+    }
+
     public Document getJsoupDocument(String url) throws IOException {
         return Jsoup.connect(url)
                 .userAgent(getUserAgent())

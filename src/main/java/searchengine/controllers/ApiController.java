@@ -19,9 +19,14 @@ public class ApiController {
     Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     public ApiController(StatisticsService statisticsService,
-                         @Qualifier("indexingServiceImplInvoke") IndexingService indexingService) {
+                         @Qualifier("indexingServiceImpl") IndexingService indexingService) {
         this.statisticsService = statisticsService;
         this.indexingService = indexingService;
+    }
+
+    @GetMapping("/debug")
+    public ResponseEntity<IndexingResponse> debug() {
+        return ResponseEntity.ok(indexingService.debug());
     }
 
     @GetMapping("/statistics")

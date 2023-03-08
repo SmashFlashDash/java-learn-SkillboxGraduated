@@ -16,20 +16,17 @@ import searchengine.model.SiteEntity;
 import searchengine.services.IndexingService;
 
 import java.io.IOException;
-import java.net.*;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.*;
 import java.util.concurrent.ForkJoinTask;
-import java.util.concurrent.RecursiveAction;
+import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 //@Component
 //@Scope
 //@RequiredArgsConstructor
-public class SiteIndexingTask extends RecursiveAction {
+public class SiteIndexingTask extends RecursiveTask<Boolean> {
 
     // TODO: можно ли внедрить service и config не делая класс Component
     //  или сделать компонентом и настроить Scope(prototype)
@@ -39,25 +36,23 @@ public class SiteIndexingTask extends RecursiveAction {
     private final Integer millis;
     private final Set<String> indexingUrisSet;
     private final String uriHost;
-    private URI uri;
     private final AtomicBoolean run;
-    private final Set<SiteIndexingTask> subTasks;
     private final AtomicBoolean isComputed;
-    private Runnable computeFinishedAction; // здесь сейвистся lambda function
-    private Runnable stopComputeAction; // здесь сейвистся lambda function
+    private final URL url;
     Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     /**
      * Создать рекурсивную задачу
-     * @param uri   - исходный парсящийся uri
-     *              сэйввится как uriHost строкой, чтобы фильтровать сайты не относящиеся к домену
-     * @param site - сущность в БД сайтай
-     * @param jsoupConfig   - получать настройки Jsoup из конфига
+     *
+     * @param url             - исходный парсящийся uri
+     *                        сэйввится как uriHost строкой, чтобы фильтровать сайты не относящиеся к домену
+     * @param site            - сущность в БД сайтай
+     * @param jsoupConfig     - получать настройки Jsoup из конфига
      * @param indexingService - сервис для записи статусов Site и новых Page
      */
-    public SiteIndexingTask(String uri, SiteEntity site, Integer millis, JsoupConfig jsoupConfig, IndexingService indexingService) {
-        this.uri = URI.create(uri);
-        String uriHost = this.uri.getHost();
+    public SiteIndexingTask(URL url, SiteEntity site, Integer millis, JsoupConfig jsoupConfig, IndexingService indexingService) {
+        this.url = url;
+        String uriHost = this.url.getHost();
         this.uriHost = uriHost.startsWith("www.") ? uriHost.substring(4) : uriHost;
         this.indexingService = indexingService;
         this.jsoupConfig = jsoupConfig;
@@ -66,14 +61,13 @@ public class SiteIndexingTask extends RecursiveAction {
         this.indexingUrisSet = Collections.synchronizedSet(new HashSet<String>());
         this.run = new AtomicBoolean(true);
         this.isComputed = new AtomicBoolean(false);
-        this.subTasks = Collections.synchronizedSet(new HashSet<SiteIndexingTask>());
     }
 
     /**
      * конструктор используется в compute()
      */
-    private SiteIndexingTask(URI uri, SiteIndexingTask siteIndexingTask) {
-        this.uri = uri;
+    private SiteIndexingTask(URL url, SiteIndexingTask siteIndexingTask) {
+        this.url = url;
         this.uriHost = siteIndexingTask.uriHost;
         this.indexingService = siteIndexingTask.indexingService;
         this.jsoupConfig = siteIndexingTask.jsoupConfig;
@@ -82,129 +76,143 @@ public class SiteIndexingTask extends RecursiveAction {
         this.indexingUrisSet = siteIndexingTask.indexingUrisSet;
         this.run = siteIndexingTask.run;
         this.isComputed = siteIndexingTask.isComputed;
-        this.subTasks = siteIndexingTask.subTasks;
-        this.computeFinishedAction = siteIndexingTask.computeFinishedAction;
-        this.stopComputeAction = siteIndexingTask.stopComputeAction;
-        subTasks.add(this);
-    }
-
-    public SiteEntity getSiteEntity() {
-        return site;
-    }
-
-    public void setComputedAction(Runnable exp){
-        computeFinishedAction = exp;
-    }
-
-    public void setStopComputeAction(Runnable exp){
-        stopComputeAction = exp;
     }
 
     public void stopCompute() {
-        run.set(false);
-    }
-
-    /**
-     * когда дойдет до последнего потока и не создат новых задач все обьекты в subTasks будут Done
-     * это считается что индексакция завершена
-     */
-    private void isComputeFinished() {
-        List<SiteIndexingTask> tasksDone = subTasks.stream().filter(ForkJoinTask::isDone).collect(Collectors.toList());
-        subTasks.removeAll(tasksDone);
-//        if (!run.get() || subTasks.isEmpty()){
-        if (!run.get()) {
-            // TODO: кидать excaption
-            if (stopComputeAction != null) {
-                stopComputeAction.run();
-            }
-            // TODO: это условие может и не срабоать
-        } else if (subTasks.isEmpty() || (subTasks.size() == 1 && subTasks.contains(this))) {
-            isComputed.set(true);
-            if (computeFinishedAction != null) {
-                computeFinishedAction.run();
-            }
+        if (!isDone()) {
+            run.set(false);
+            site.setStatus(EnumSiteStatus.FAILED);
+            site.setLastError("Индексация остановлена пользователем");
+            indexingService.saveSite(site);
         }
     }
 
     @Override
-    protected void compute() {
-        uri = URI.create(String.format("%s://%s%s", uri.getScheme(), uri.getAuthority(), uri.getPath()));
-        if (!indexingUrisSet.add(uri.toString())) {
-            return;
+    protected Boolean compute() {
+        // проверка что не обрабаытвается в другом потоке и добавляем в set
+        if (!indexingUrisSet.add(url.toString())) {
+            return true;
+        } else if (!run.get()) {
+            return false;
         }
-
-        UrlType uriType = urlValidate();
+        UrlType uriType = validateUrl();
         if (!(uriType == UrlType.SITE_PAGE)) {
-            indexingUrisSet.remove(uri.toString());
-            return;
+            //indexingUrisSet.remove(url.toString());
+            return true;
         }
 
+
+        // сущность страницы
         PageEntity page = new PageEntity();
-        page.setPath(uri.toString());
-        page.setSiteId(site.getId());
-
+        page.setPath(url.toString());
+        page.setSite(site);
+        Document doc;
         try {
-            if (millis != null) {
-                Thread.sleep(millis);
-            }
-            Connection.Response res = Jsoup.connect(uri.toString())
-                    .userAgent(jsoupConfig.getUserAgent())
-                    .referrer(jsoupConfig.getReffer())
-                    .method(Connection.Method.GET)
-                    .execute();
-            Document doc = res.parse();
-
+            doc = jsoupConfig.getJsoupDocument(url.toString(), millis);
             page.setContent(doc.outerHtml());
             page.setCode(doc.connection().response().statusCode());
-            indexingService.saveSite(site);
+            // site.getPages().add(page);
             indexingService.savePage(page);
-            indexingUrisSet.remove(uri.toString());
+            indexingService.saveSite(site);
+            indexingUrisSet.remove(url.toString());
+        } catch (HttpStatusException e) {
+            page.setContent(e.getMessage());
+            page.setCode(e.getStatusCode());
+            indexingService.savePage(page);
+            indexingService.saveSite(site);
+            indexingUrisSet.remove(url.toString());
+            return true;
+        } catch (UnsupportedMimeTypeException | MalformedURLException e) {
+            // indexingUrisSet.remove(url.toString());
+            return true;
+        } catch (IOException e) { // catch (SocketTimeoutException | SocketException | UnknownHostException e)
+            logger.error(e.getClass().getName() + ":" + e.getMessage() + " --- " + url.toString());
+            run.set(false);
+            site.setStatus(EnumSiteStatus.FAILED);
+            site.setLastError(e.getClass().getName() + ":" + e.getMessage() + " --- " + url.toString());
+            indexingService.saveSite(site);
+            indexingUrisSet.remove(url.toString());
+            return false;
+        }
 
-            if (!run.get()) {
-                // остановка пользователем
-                stopComputeAction.run();
-            } else {
-                for (Element link : doc.select("a[href]")) {
-                    URI newUri = URI.create(link.attr("abs:href"));
-                    SiteIndexingTask task = new SiteIndexingTask(newUri, this);
-                    task.fork();
-                }
+
+        try {
+            LemmaFinder lf = LemmaFinder.getInstance();
+            Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
+            indexingService.savePageLemmas(page, lemmas);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // обход ссылок и вернуть результат по ним
+        List<SiteIndexingTask> tasks = walkSiteLinks(doc);
+        return tasks.stream().allMatch(ForkJoinTask::join);
+    }
+
+    private UrlType validateUrl() {
+        if (!(url.getHost().equals(uriHost) || url.getHost().endsWith(".".concat(uriHost)))) {
+            return UrlType.OTHER_SITE;
+        } else if (url.getPath().contains(".") && !url.getPath().endsWith(".html")) {
+            // logger.warn(String.format("File: %s", uri.toString()));
+            return UrlType.SITE_FILE;
+        } else if (indexingService.isPageExistByPath(url.toString())) {
+            return UrlType.PAGE_IN_TABLE;
+        } else {
+            return UrlType.SITE_PAGE;
+        }
+    }
+
+    private Document jsoupGetDocument(PageEntity page) throws IOException {
+        if (millis != null) {
+            try {
+                Thread.sleep(millis);
+            } catch (InterruptedException e) {
+                logger.error(e.getClass().getName().concat(": ").concat(e.getMessage()));
             }
-            isComputeFinished();
-
-            // TODO: если ошибка завершить все потоки, и поставить статус
+        }
+        try {
+            return Jsoup.connect(url.toString())
+                    .userAgent(jsoupConfig.getUserAgent())
+                    .referrer(jsoupConfig.getReffer())
+                    .timeout(jsoupConfig.getSocketTimeout())
+                    .method(Connection.Method.GET)
+                    .execute().parse();
         } catch (HttpStatusException e) {
             page.setContent("");
             page.setCode(e.getStatusCode());
             indexingService.savePage(page);
-            indexingUrisSet.remove(uri.toString());
+            throw e;
         } catch (UnsupportedMimeTypeException | MalformedURLException e) {
-            logger.warn(e.getClass().getName().concat(": ").concat(uri.toString()));
+            // logger.warn(e.getClass().getName().concat(": ").concat(uri.toString()));
+            throw e;
         }
-        // catch (SocketTimeoutException | SocketException | UnknownHostException e) {
-        catch (IOException | InterruptedException e) {
-            // TODO: Ошибки можно вынести в setFunction
-            logger.error(e.getClass().getName().concat(": ").concat(e.getMessage()));
-            stopCompute();
+        catch (IOException e) { // catch (SocketTimeoutException | SocketException | UnknownHostException e) {
+            logger.error(e.getClass().getName().concat(": ").concat(e.getMessage()).concat(" --- ").concat(url.toString()));
+            run.set(false);
             site.setStatus(EnumSiteStatus.FAILED);
-            site.setLastError(e.getClass().getName().concat(": ").concat(e.getMessage()));
+            site.setLastError(e.getClass().getName().concat(": ").concat(e.getMessage()).concat(" --- ").concat(url.toString()));
             indexingService.saveSite(site);
+            throw e;
         }
     }
 
-    // TODO: может быть слабое место что надо заносить ссылку в setUrls в начале compute, после отброса query
-    //  затем если есть в таблце убрать из set
-    private UrlType urlValidate() {
-        if (!uri.getScheme().startsWith("http")) {
-            return UrlType.NOT_LINK;
-        } else if (!(uri.getHost().equals(uriHost) || uri.getHost().endsWith(".".concat(uriHost)))) {
-            return UrlType.OTHER_SITE;
-            // TODO: можено через uri.toUrl().getContent().getType(), но это делается в Jsoup
-            // } else if (!(uri.getPath().endsWith("/") || uri.getPath().endsWith(".html"))) {
-            //     return UriType.SITE_FILE;
-        } else if (indexingService.isPageExistByPath(uri.toString())) {
-            return UrlType.PAGE_IN_TABLE;
+    private List<SiteIndexingTask> walkSiteLinks(Document doc) {
+        List<SiteIndexingTask> tasks = new ArrayList<>();
+        for (Element link : doc.select("a[href]")) {
+            String uriString = link.attr("abs:href");
+            URL newUri;
+            try {
+                newUri = new URL(uriString);
+                newUri = new URL(newUri.getProtocol(), newUri.getHost(), newUri.getPath());
+            } catch (MalformedURLException e) {
+                continue;
+            }
+            SiteIndexingTask task = new SiteIndexingTask(newUri, this);
+            tasks.add(task);
+            task.fork();
         }
-        return UrlType.SITE_PAGE;
+        return tasks;
     }
+
+
 }
