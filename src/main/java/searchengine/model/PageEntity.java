@@ -42,31 +42,13 @@ public class PageEntity {
     @OneToMany(mappedBy = "page", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     List<IndexEntity> indexes;
 
+    @ManyToMany(mappedBy = "pages", fetch = FetchType.LAZY)
+    List<LemmaEntity> lemmas;
+
     public PageEntity(SiteEntity site, String path, Integer code, String content) {
         this.site = site;
         this.path = path;
         this.code = code;
         this.content = content;
     }
-
-    // TODO: поле получить все lemma для данной page
-//     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-//     @JoinColumn(name = "site_id", nullable = false)
-//     List<LemmaEntity> lemmas;
-//     @OneToMany(mappedBy = "page", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-//     List<LemmaEntity> lemmas;
-
-//     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-//     @JoinTable(name = "`index`",
-//             joinColumns = {@JoinColumn(name = "lemma_id")},
-//             inverseJoinColumns = {@JoinColumn(name = "page_id")}
-//     )
-//     List<LemmaEntity> lemmas;
-
-    // @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    // @JoinTable(name = "`index`",
-    //         joinColumns = {@JoinColumn(name = "page_id")},
-    //         inverseJoinColumns = {@JoinColumn(name = "lemma_id")}
-    // )
-    // Set<PageEntity> page;
 }

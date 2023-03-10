@@ -24,11 +24,6 @@ public class ApiController {
         this.indexingService = indexingService;
     }
 
-    @GetMapping("/debug")
-    public ResponseEntity<IndexingResponse> debug() {
-        return ResponseEntity.ok(indexingService.debug());
-    }
-
     @GetMapping("/statistics")
     public ResponseEntity<StatisticsResponse> statistics() {
         return ResponseEntity.ok(statisticsService.getStatistics());

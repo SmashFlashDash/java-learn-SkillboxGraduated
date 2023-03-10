@@ -1,7 +1,9 @@
 package searchengine.model;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.domain.Page;
 
 import javax.persistence.*;
 import java.util.List;
@@ -15,7 +17,14 @@ import java.util.List;
 @Table(name = "lemma",
         uniqueConstraints = @UniqueConstraint(columnNames = {"site_id", "lemma"})
 )
+@NoArgsConstructor
 public class LemmaEntity {
+
+    public LemmaEntity(SiteEntity site, String lemma, Integer frequency) {
+        this.site = site;
+        this.lemma = lemma;
+        this.frequency = frequency;
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,4 +47,12 @@ public class LemmaEntity {
 
     @OneToMany(mappedBy = "lemma", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     List<IndexEntity> indexes;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "index",
+            joinColumns = { @JoinColumn(name = "lemma_id") },
+            inverseJoinColumns = { @JoinColumn(name = "page_id")}
+    )
+    List<PageEntity> pages;
 }

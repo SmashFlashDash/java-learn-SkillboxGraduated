@@ -1,9 +1,11 @@
 package searchengine.model;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
+
 
 @Entity
 @Getter
@@ -11,7 +13,15 @@ import javax.persistence.*;
 @Table(name = "`index`",
         uniqueConstraints = @UniqueConstraint(columnNames = {"page_id", "lemma_id"})
 )
+@NoArgsConstructor
 public class IndexEntity {
+
+    public IndexEntity(PageEntity page, LemmaEntity lemma, Float rank) {
+        this.page = page;
+        this.lemma = lemma;
+        this.rank = rank;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
