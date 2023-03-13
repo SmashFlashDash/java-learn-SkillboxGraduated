@@ -10,6 +10,9 @@ import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.IndexingService;
 import searchengine.services.StatisticsService;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+
 @RestController
 @RequestMapping("/api")
 public class ApiController {
@@ -24,6 +27,7 @@ public class ApiController {
         this.indexingService = indexingService;
     }
 
+
     @GetMapping("/statistics")
     public ResponseEntity<StatisticsResponse> statistics() {
         return ResponseEntity.ok(statisticsService.getStatistics());
@@ -31,7 +35,7 @@ public class ApiController {
 
     @GetMapping("/startIndexing")
     public ResponseEntity<IndexingResponse> startIndexing(){
-        return ResponseEntity.ok(indexingService.startIndexingSites());
+        return ResponseEntity.ok(indexingService.startSitesIndexing());
     }
 
     @GetMapping("/stopIndexing")
@@ -42,5 +46,24 @@ public class ApiController {
     @PostMapping("/indexPage")
     public ResponseEntity<IndexingResponse> pageIndexing(@RequestParam(name = "url") String url){
         return ResponseEntity.ok(indexingService.pageIndexing(url));
+    }
+
+    @GetMapping
+    public ResponseEntity<IndexingResponse> search(@PathVariable(name = "query") String query,
+                                                   @PathVariable(name = "site", required = false) String site,
+                                                   @PathVariable(name = "offset", required = false) Integer offset,
+                                                   @PathVariable(name = "limit", required = false) Integer limit) {
+        if (site != null) {
+            try {
+                URL url = new URL(site);
+            } catch (MalformedURLException e) {
+                return ResponseEntity.ok(new IndexingResponse(false, "Ошибка Url: " + site));
+            }
+        }
+        offset = offset == null ? 0 : offset;
+        limit = limit == null ? 20 : limit;
+
+
+        return ResponseEntity.ok(new IndexingResponse(false));
     }
 }

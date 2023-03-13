@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface IndexingService {
-    IndexingResponse startIndexingSites();
+    IndexingResponse startSitesIndexing();
     IndexingResponse stopIndexingSites();
     IndexingResponse pageIndexing(String url);
 }

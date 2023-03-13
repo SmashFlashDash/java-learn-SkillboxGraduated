@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class IndexingServiceImpl implements IndexingService {
 
-    //    @PersistenceContext
+//    @PersistenceContext
 //    private final EntityManager entityManager;
     private final SitesList sites;
     private final PageRepository pageRepository;
@@ -49,7 +49,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     // TODO: indexingService можно внедриь в task Autowired сделав SCope prototype
     @Override
-    public IndexingResponse startIndexingSites() {
+    public IndexingResponse startSitesIndexing() {
         List<Site> sitesList = sites.getSites();
         if (!runningTasks.isEmpty()) {
             logger.error(String.format("Индексация уже запущена: %s", runningTasks));
@@ -99,7 +99,6 @@ public class IndexingServiceImpl implements IndexingService {
             return new IndexingResponse(false, "Индексация не запущена");
         }
         runningTasks.forEach(SiteIndexingTask::stopCompute);
-//        runningTasks.forEach(t -> { t.stopCompute(); runningTasks.remove(t); });
         return new IndexingResponse(true);
     }
 
