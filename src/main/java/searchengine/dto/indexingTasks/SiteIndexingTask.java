@@ -1,4 +1,4 @@
-package searchengine.classes;
+package searchengine.dto.indexingTasks;
 
 import org.jsoup.HttpStatusException;
 import org.jsoup.UnsupportedMimeTypeException;
@@ -6,9 +6,9 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.JsoupConfig;
 import searchengine.controllers.ApiController;
+import searchengine.dto.indexing.SiteConfig;
 import searchengine.model.EnumSiteStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
@@ -19,49 +19,43 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ForkJoinTask;
-import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 //@Component
 //@Scope
 //@RequiredArgsConstructor
-public class SiteIndexingTask extends RecursiveTask<Boolean> {
+public class SiteIndexingTask extends AbstractIndexingTask {
 
     // TODO: можно ли внедрить service и config не делая класс Component
     //  или сделать компонентом и настроить Scope(prototype)
     private final IndexingServiceImpl indexingService;
     private final JsoupConfig jsoupConfig;
     private final SiteEntity site;
-    private final Integer millis;
+    private final SiteConfig siteConfig;
     private final Set<String> runningUrls;
     private final String uriHost;
     private final AtomicBoolean run;
-    private final AtomicBoolean isComputed;
     private final URL url;
     private final LemmaFinder lf;
     Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     /**
      * Создать рекурсивную задачу
-     *
-     * @param url             - исходный парсящийся uri
-     *                        сэйввится как uriHost строкой, чтобы фильтровать сайты не относящиеся к домену
      * @param site            - сущность в БД сайтай
      * @param jsoupConfig     - получать настройки Jsoup из конфига
      * @param indexingService - сервис для записи статусов Site и новых Page
      */
-    public SiteIndexingTask(URL url, SiteEntity site, Integer millis, JsoupConfig jsoupConfig,
+    public SiteIndexingTask(SiteConfig siteConfig, SiteEntity site, JsoupConfig jsoupConfig,
                             IndexingServiceImpl indexingService, LemmaFinder lf) {
-        this.url = url;
+        this.siteConfig = siteConfig;
+        this.url = siteConfig.getUrl();
         String uriHost = this.url.getHost();
         this.uriHost = uriHost.startsWith("www.") ? uriHost.substring(4) : uriHost;
         this.indexingService = indexingService;
         this.jsoupConfig = jsoupConfig;
         this.site = site;
-        this.millis = millis;
         this.runningUrls = Collections.synchronizedSet(new HashSet<String>());
         this.run = new AtomicBoolean(true);
-        this.isComputed = new AtomicBoolean(false);
         this.lf = lf;
     }
 
@@ -69,15 +63,14 @@ public class SiteIndexingTask extends RecursiveTask<Boolean> {
      * конструктор используется в compute()
      */
     private SiteIndexingTask(URL url, SiteIndexingTask siteIndexingTask) {
+        this.siteConfig = siteIndexingTask.siteConfig;
         this.url = url;
         this.uriHost = siteIndexingTask.uriHost;
         this.indexingService = siteIndexingTask.indexingService;
         this.jsoupConfig = siteIndexingTask.jsoupConfig;
         this.site = siteIndexingTask.site;
-        this.millis = siteIndexingTask.millis;
         this.runningUrls = siteIndexingTask.runningUrls;
         this.run = siteIndexingTask.run;
-        this.isComputed = siteIndexingTask.isComputed;
         this.lf = siteIndexingTask.lf;
     }
 
@@ -108,7 +101,7 @@ public class SiteIndexingTask extends RecursiveTask<Boolean> {
         page.setSite(site);
         Document doc;
         try {
-            doc = jsoupConfig.getJsoupDocument(url.toString(), millis);
+            doc = jsoupConfig.getJsoupDocument(url.toString(), siteConfig.getMillis());
             page.setContent(doc.outerHtml());
             page.setCode(doc.connection().response().statusCode());
             // site.getPages().add(page);
@@ -126,10 +119,10 @@ public class SiteIndexingTask extends RecursiveTask<Boolean> {
             // runningUrls.remove(url.toString());
             return true;
         } catch (IOException e) { // catch (SocketTimeoutException | SocketException | UnknownHostException e)
-            logger.error(e.getClass().getName() + ":" + e.getMessage() + " --- " + url.toString());
+            // logger.error(e.getClass().getName() + ":" + e.getMessage());
             run.set(false);
             site.setStatus(EnumSiteStatus.FAILED);
-            site.setLastError(e.getClass().getName() + ":" + e.getMessage() + " --- " + url.toString());
+            site.setLastError(e.getClass().getName() + ":" + e.getMessage());
             indexingService.saveSite(site);
             runningUrls.remove(url.toString());
             return false;

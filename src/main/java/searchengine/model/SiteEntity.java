@@ -48,9 +48,15 @@ public class SiteEntity {
     @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     String name;
 
-    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
+    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     List<PageEntity> pages;
 
-    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
+    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     List<LemmaEntity> lemmas;
+
+//    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE, orphanRemoval = true)
+//    List<PageEntity> pages;
+//
+//    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE, orphanRemoval = true)
+//    List<LemmaEntity> lemmas;
 }

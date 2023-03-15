@@ -45,7 +45,7 @@ public class LemmaEntity {
     @Column(nullable = false)
     Integer frequency;
 
-    @OneToMany(mappedBy = "lemma", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "lemma", fetch = FetchType.LAZY)
     List<IndexEntity> indexes;
 
     @ManyToMany(fetch = FetchType.LAZY)

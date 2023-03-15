@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import searchengine.dto.error.ErrorResponse;
 import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.IndexingService;
@@ -16,6 +17,9 @@ import java.net.URL;
 @RestController
 @RequestMapping("/api")
 public class ApiController {
+
+    //TODO сделать lemmaFinder componentSpring
+    // занижектить в indexingService
 
     private final StatisticsService statisticsService;
     private final IndexingService indexingService;
@@ -39,7 +43,7 @@ public class ApiController {
     }
 
     @GetMapping("/stopIndexing")
-    public ResponseEntity<IndexingResponse> stopIndexing(){
+    public ResponseEntity<Object> stopIndexing(){
         return ResponseEntity.ok(indexingService.stopIndexingSites());
     }
 
@@ -49,7 +53,7 @@ public class ApiController {
     }
 
     @GetMapping
-    public ResponseEntity<IndexingResponse> search(@PathVariable(name = "query") String query,
+    public ResponseEntity<Object> search(@PathVariable(name = "query") String query,
                                                    @PathVariable(name = "site", required = false) String site,
                                                    @PathVariable(name = "offset", required = false) Integer offset,
                                                    @PathVariable(name = "limit", required = false) Integer limit) {
@@ -57,13 +61,13 @@ public class ApiController {
             try {
                 URL url = new URL(site);
             } catch (MalformedURLException e) {
-                return ResponseEntity.ok(new IndexingResponse(false, "Ошибка Url: " + site));
+                return ResponseEntity.ok(new ErrorResponse(false, "Ошибка Url: " + site));
             }
         }
         offset = offset == null ? 0 : offset;
         limit = limit == null ? 20 : limit;
 
 
-        return ResponseEntity.ok(new IndexingResponse(false));
+        return ResponseEntity.ok(new ErrorResponse(false, ""));
     }
 }

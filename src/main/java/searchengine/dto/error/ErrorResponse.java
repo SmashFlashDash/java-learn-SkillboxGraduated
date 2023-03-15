@@ -1,11 +1,11 @@
-package searchengine.dto.indexing;
+package searchengine.dto.error;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 
 @Data
 @AllArgsConstructor
-public class IndexingResponse {
+public class ErrorResponse {
     private boolean result;
+    private String error;
 }

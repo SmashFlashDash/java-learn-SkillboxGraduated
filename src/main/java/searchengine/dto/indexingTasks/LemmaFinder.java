@@ -1,9 +1,7 @@
-package searchengine.classes;
+package searchengine.dto.indexingTasks;
 
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.*;

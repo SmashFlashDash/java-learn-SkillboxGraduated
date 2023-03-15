@@ -39,7 +39,9 @@ public class PageEntity {
     @Column(columnDefinition = "MEDIUMTEXT", nullable = false)
     String content;
 
-    @OneToMany(mappedBy = "page", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    // TODO: если здесь добавить cascade не работает startIndexing при delete site
+    //  если не добавить не работает pageReposituy.delete(PageEntity) в Indexpag
+    @OneToMany(mappedBy = "page", fetch = FetchType.LAZY)
     List<IndexEntity> indexes;
 
     @ManyToMany(mappedBy = "pages", fetch = FetchType.LAZY)

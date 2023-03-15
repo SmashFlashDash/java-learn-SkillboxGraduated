@@ -26,4 +26,10 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Long> {
     @Query("UPDATE LemmaEntity l SET l.frequency = l.frequency - 1 WHERE l.id IN (:indexes)")
     void updateBeforeDeleteIndexes(List<Long> indexes);
 
+//    @Transactional
+//    @Modifying
+//    @Query("FROM LemmaEntity l WHERE l.id IN (:indexes)" +
+//            "CASE WHEN l.frequency = 1 THEN DELETE l WHERE l.id IN (:indexes)")
+//    void updateBeforeDeleteIndexes2(List<Long> indexes);
+
 }
