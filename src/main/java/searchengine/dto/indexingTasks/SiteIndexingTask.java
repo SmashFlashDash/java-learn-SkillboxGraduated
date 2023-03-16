@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import searchengine.config.JsoupConfig;
 import searchengine.controllers.ApiController;
-import searchengine.dto.indexing.SiteConfig;
+import searchengine.dto.indexing.SiteData;
 import searchengine.model.EnumSiteStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
@@ -31,7 +31,7 @@ public class SiteIndexingTask extends AbstractIndexingTask {
     private final IndexingServiceImpl indexingService;
     private final JsoupConfig jsoupConfig;
     private final SiteEntity site;
-    private final SiteConfig siteConfig;
+    private final SiteData siteData;
     private final Set<String> runningUrls;
     private final String uriHost;
     private final AtomicBoolean run;
@@ -45,10 +45,10 @@ public class SiteIndexingTask extends AbstractIndexingTask {
      * @param jsoupConfig     - получать настройки Jsoup из конфига
      * @param indexingService - сервис для записи статусов Site и новых Page
      */
-    public SiteIndexingTask(SiteConfig siteConfig, SiteEntity site, JsoupConfig jsoupConfig,
+    public SiteIndexingTask(SiteData siteData, SiteEntity site, JsoupConfig jsoupConfig,
                             IndexingServiceImpl indexingService, LemmaFinder lf) {
-        this.siteConfig = siteConfig;
-        this.url = siteConfig.getUrl();
+        this.siteData = siteData;
+        this.url = siteData.getUrl();
         String uriHost = this.url.getHost();
         this.uriHost = uriHost.startsWith("www.") ? uriHost.substring(4) : uriHost;
         this.indexingService = indexingService;
@@ -63,7 +63,7 @@ public class SiteIndexingTask extends AbstractIndexingTask {
      * конструктор используется в compute()
      */
     private SiteIndexingTask(URL url, SiteIndexingTask siteIndexingTask) {
-        this.siteConfig = siteIndexingTask.siteConfig;
+        this.siteData = siteIndexingTask.siteData;
         this.url = url;
         this.uriHost = siteIndexingTask.uriHost;
         this.indexingService = siteIndexingTask.indexingService;
@@ -101,7 +101,7 @@ public class SiteIndexingTask extends AbstractIndexingTask {
         page.setSite(site);
         Document doc;
         try {
-            doc = jsoupConfig.getJsoupDocument(url.toString(), siteConfig.getMillis());
+            doc = jsoupConfig.getJsoupDocument(url.toString(), siteData.getMillis());
             page.setContent(doc.outerHtml());
             page.setCode(doc.connection().response().statusCode());
             // site.getPages().add(page);

@@ -82,6 +82,12 @@ public class LemmaFinder {
         return lemmaSet;
     }
 
+    public Boolean isLemmaApplyWord(String lemma, String word) {
+        return !word.isEmpty() && isCorrectWordForm(word) &&
+                !anyWordBaseBelongToParticle(luceneMorphology.getMorphInfo(word))
+                && luceneMorphology.getNormalForms(word).contains(lemma);
+    }
+
     private boolean anyWordBaseBelongToParticle(List<String> wordBaseForms) {
         return wordBaseForms.stream().anyMatch(this::hasParticleProperty);
     }

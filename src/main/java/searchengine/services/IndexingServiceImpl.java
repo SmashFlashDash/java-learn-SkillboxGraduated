@@ -14,7 +14,7 @@ import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.controllers.ApiController;
 import searchengine.dto.indexing.IndexingResponse;
-import searchengine.dto.indexing.SiteConfig;
+import searchengine.dto.indexing.SiteData;
 import searchengine.exceptions.OkError;
 import searchengine.model.*;
 import searchengine.repositories.IndexRepository;
@@ -53,16 +53,16 @@ public class IndexingServiceImpl implements IndexingService {
         } else if (sitesList.isEmpty()) {
             throw new OkError("В конфигурации не указаны сайты для индексировния");
         }
-        List<SiteConfig> siteConfigs = getSiteConfigs(sitesList);
+        List<SiteData> sitesData = getSiteConfigs(sitesList);
 
         List<Thread> threads = new ArrayList<>();
-        for (SiteConfig siteConfig : siteConfigs) {
-            SiteEntity siteEntity = new SiteEntity(siteConfig.getName(), siteConfig.getUrl().toString(), EnumSiteStatus.INDEXING);
-            SiteIndexingTask task = new SiteIndexingTask(siteConfig, siteEntity, jsoupConfig, this, lf);
+        for (SiteData siteData : sitesData) {
+            SiteEntity siteEntity = new SiteEntity(siteData.getName(), siteData.getUrl().toString(), EnumSiteStatus.INDEXING);
+            SiteIndexingTask task = new SiteIndexingTask(siteData, siteEntity, jsoupConfig, this, lf);
             threads.add(new Thread(() -> {
                 runningTasks.add(task);
                 // TODO: почему в модели на ManyToMany без cascade стираются indexes
-                siteRepository.deleteByName(siteConfig.getName());
+                siteRepository.deleteByName(siteData.getName());
                 saveSite(siteEntity);
                 try {
                     Boolean res = forkJoinPool.invoke(task);
@@ -210,21 +210,21 @@ public class IndexingServiceImpl implements IndexingService {
         indexRepository.saveAll(indexEntities);
     }
 
-    private List<SiteConfig> getSiteConfigs(List<Site> sitesList) {
-        List<SiteConfig> siteConfigs = new ArrayList<>();
+    private List<SiteData> getSiteConfigs(List<Site> sitesList) {
+        List<SiteData> sitesData = new ArrayList<>();
         for (Site site : sitesList) {
-            SiteConfig siteConfig = new SiteConfig();
-            siteConfig.setName(site.getName());
-            siteConfig.setMillis(site.getMillis());
+            SiteData siteData = new SiteData();
+            siteData.setName(site.getName());
+            siteData.setMillis(site.getMillis());
             try {
                 URL url = new URL(site.getUrl());
-                siteConfig.setUrl(url);
+                siteData.setUrl(url);
             } catch (MalformedURLException e) {
                 throw new OkError("Некорректный url: ".concat(site.getUrl()));
             }
-            siteConfigs.add(siteConfig);
+            sitesData.add(siteData);
         }
-        return siteConfigs;
+        return sitesData;
     }
 
     private Site isUrlInConfig(URL url){
