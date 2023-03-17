@@ -34,6 +34,8 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Long> {
 //            "CASE WHEN l.frequency = 1 THEN DELETE l WHERE l.id IN (:indexes)")
 //    void updateBeforeDeleteIndexes2(List<Long> indexes);
 
-    Page<LemmaEntity> findAllByLemmaInOrderByFrequencyAsc(Iterable<String> s, Pageable nextPage);
+    //Page<LemmaEntity> findAllByLemmaInOrderByFrequencyAsc(Iterable<String> s, Pageable nextPage);
+
+    List<LemmaEntity> findAllByLemmaInOrderByFrequencyAsc(Iterable<String> s);
 
 }
