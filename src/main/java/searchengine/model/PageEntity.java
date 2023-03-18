@@ -11,10 +11,15 @@ import java.util.List;
 @Getter
 @Setter
 @Table(name = "page")
-// hibernate не поддерживает указать длину индекса на поле TEXT
-// что обязательно в mySQL, поэтому индекс создается в schema.sql
-//@Table(name = "page", indexes = @Index(columnList = "path(50)"))
 @NoArgsConstructor
+//@Table(name = "page", indexes = @Index(columnList = "path(50)"))
+//@Table(name = "page",
+//        uniqueConstraints = @UniqueConstraint(columnNames = {"path"})
+//)
+// Caused by: java.sql.SQLSyntaxErrorException: BLOB/TEXT column 'path' used in key specification without a key length
+// hibernate не поддерживает указать длину индекса на поле TEXT что обязательно в mySQL, поэтому индекс создается в schema.sql
+// создать индекс отдельно в schema.sql
+// или создать таблицы для бд в schema.sql и выключить ddl-auto
 public class PageEntity {
 
     @Id
@@ -39,7 +44,7 @@ public class PageEntity {
     @Column(columnDefinition = "MEDIUMTEXT", nullable = false)
     String content;
 
-    // TODO: если здесь добавить cascade не работает startIndexing при delete site
+    // TODO: если здесь добавьит cascade не работает startIndexing при delete site
     //  если не добавить не работает pageReposituy.delete(PageEntity) в Indexpag
     @OneToMany(mappedBy = "page", fetch = FetchType.LAZY)
     List<IndexEntity> indexes;
