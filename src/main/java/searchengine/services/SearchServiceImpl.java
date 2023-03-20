@@ -43,6 +43,7 @@ public class SearchServiceImpl implements SearchService {
                 return new SearchResponse(true, 0, new ArrayList<>());
             }
         }
+        // TODO: если в lemmas нет entity значит не найдена вообще
         // if (!lemmas.isEmpty()) {
         //     pages.addAll(lemmas.get(0).getPages());
         //     for (int i = 1; i < lemmas.size(); i ++) {
@@ -88,10 +89,7 @@ public class SearchServiceImpl implements SearchService {
 class PageSnippet {
     private final static Document.OutputSettings outputSettings = new Document.OutputSettings();
     private final static Map<String, Float> tag2Relevance;
-    private final Document document;
-    private final LemmaFinder lf;
-    private final Set<String> lemmas;
-    private final Map<String, SnippetDto> snippets;
+
     static {
         Map<String, Float> map = Stream.of(
                 new AbstractMap.SimpleEntry<>("h1", 1F),
@@ -112,6 +110,11 @@ class PageSnippet {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
         outputSettings.prettyPrint(false);
     }
+
+    private final Document document;
+    private final LemmaFinder lf;
+    private final Set<String> lemmas;
+    private final Map<String, SnippetDto> snippetsMap;
 
     // TODO: можно искать по селектору тэгу сниппеты лемм
     //  если ищем по тэгу нужно сразу брать сниппет как нашли
@@ -141,7 +144,7 @@ class PageSnippet {
         this.document = document;
         this.lf = lf;
         this.lemmas = lemmas;
-        this.snippets = lemmas.stream().collect(Collectors.toMap(i -> i, i -> new SnippetDto()));
+        this.snippetsMap = lemmas.stream().collect(Collectors.toMap(i -> i, i -> new SnippetDto()));
 
         Elements elements = document.getAllElements();
         for (Element element : elements) {
@@ -152,9 +155,6 @@ class PageSnippet {
                 findSnippets(text, tag);
             }
         }
-//        for (String tag : tag2Relevance.keySet()) {
-//            Elements elements = document.select(tag);
-//        }
     }
 
     // TODO: в обьекте this.snippets записываем в snippet и relevance by tag
@@ -172,98 +172,66 @@ class PageSnippet {
 
     // TODO: взять на 100 символов в стороны, разделить текст на предложения
     // записать префикс и постфикс сниппета и самов слово
+
+    // TODO: использовать HashMap<String, SnippetdDto>
+    //  с полями maxTagRelevace, List<Iteger[]>
+    //  в гет сниппет, найдем первый с минимальной длинной
+    //  в остпльнрых ищем ближайшие к нему по старт
+    //  берем по +100 -100 символов от них
     private void findSnippets(String text, String tag) {
+        Float tagRelevance = tag2Relevance.get(tag) != null ? tag2Relevance.get(tag) : 0F;
         String[] words = text.toLowerCase(Locale.ROOT).replaceAll("([^а-я\\s])", " ").trim().split("\\s+");
         for (String word : words) {
-            String lemma = lemmas.stream().filter(l -> lf.isLemmaApplyWord(l, word)).findFirst().orElse(null);
-            if (lemma != null) {
-                SnippetDto snippet = snippets.get(lemma);
-                // snippet.setSnippet(" wow ");
+            lemmas.stream().filter(l -> lf.isLemmaApplyWord(l, word)).findFirst().ifPresent(lemma -> {
+                SnippetDto snippetDto = snippetsMap.get(lemma);
+                Float relevance = snippetDto.getMaxTagRelevance();
+                if (relevance == null || relevance < tagRelevance) {
+                    snippetDto.setMaxTagRelevance(tagRelevance);
+                }
                 Matcher m = Pattern.compile(String.format("\\b%s\\b", word), Pattern.CASE_INSENSITIVE).matcher(text);
-                if (m.find()) {
-
-                    int wordStart;
-                    int wordEnd;
-                    wordStart = m.start();
-                    wordEnd = m.end();
-                    snippet.setPrefix(wordStart - 100 > -1 ? text.substring(wordStart - 100, wordStart) : text.substring(0, wordStart));
-                    snippet.setPostfix( wordEnd + 100 < text.length() - 1 ? text.substring(wordEnd, wordEnd + 100) : text.substring(wordEnd));
-                    snippet.setMidfix(text.substring(wordStart, wordEnd));
-                    snippet.setStart(wordStart);
-                    snippet.setEnd(wordEnd);
-                    snippet.addMatch(new Integer[]{wordStart, wordEnd});
+                while (m.find()) {
+                    SnippetMatch match = new SnippetMatch(m.start(), m.end(), tagRelevance);
+                    snippetDto.addMatch(match);
                 }
-                // Matcher m1 = Pattern.compile(String.format("(([.?!;]|...).+(%s).+([.?!;]|...))", word), Pattern.CASE_INSENSITIVE).matcher(text);
-                // m1.find();
-
-                // TODO: или убрать из списка lem но так найдем ближайший к остальныи сниппетам
-                Float tagRelevance = tag2Relevance.get(tag);
-                if (tagRelevance != null) {
-                    Float relevance =  snippet.getRelevance();
-                    if (relevance == null) {
-                        snippet.setRelevance(tagRelevance);
-                    } else if (relevance < tagRelevance) {
-                        snippet.setRelevance(tagRelevance);
-                    }
-                }
-                // все сниппеты найдены
-                if (snippets.values().stream().noneMatch(i -> i.getSnippet().isBlank())) {
-                    break;
-                }
-            }
+                // TODO: флаг котоырй ставить функцией найдены ли все сниппеты, и в цикле выходит из функции
+            });
+//            Optional<String> lemma = lemmas.stream().filter(l -> lf.isLemmaApplyWord(l, word)).findFirst();
+//            if (lemma.isPresent()) {
+//                SnippetDto snippetDto = snippetsMap.get(lemma);
+//                Float relevance = snippetDto.getMaxTagRelevance();
+//                if (relevance == null || relevance < tagRelevance) {
+//                    snippetDto.setMaxTagRelevance(tagRelevance);
+//                }
+//                Matcher m = Pattern.compile(String.format("\\b%s\\b", word), Pattern.CASE_INSENSITIVE).matcher(text);
+//                while (m.find()) {
+//                    SnippetMatch match = new SnippetMatch(m.start(), m.end());
+//                    snippetDto.addMatch(match);
+//                }
+//                // Matcher m1 = Pattern.compile(String.format("(([.?!;]|...).+(%s).+([.?!;]|...))", word), Pattern.CASE_INSENSITIVE).matcher(text);
+//                // m1.find();
+//                // все сниппеты найдены
+//                if (snippetsMap.values().stream().noneMatch(SnippetDto::isMatchesEmpty)) {
+//                    return;
+//                }
+//            }
         }
     }
 
     public String getSnippet() {
         // TODO: выстроить ближайшие сниппеты по matches
-        for (Map.Entry<String,SnippetDto> s : snippets.entrySet()){
+        //  этл сортированный List по matches start
+        //  -
+        //  идти по листу совпадений
+        //  когда найдем сниппет
+        //  -
+        for (Map.Entry<String, SnippetDto> s : snippetsMap.entrySet()) {
             s.getValue().getMatchers();
         }
         return "";
-    }
-
-    private String findSnippets(String text) {
-        // вариант поиска по тегам для определения релевантности по тегу
-
-        StringBuilder snippet = new StringBuilder();
-        String[] words = text.toLowerCase(Locale.ROOT).replaceAll("([^а-я\\s])", " ").trim().split("\\s+");
-        int index;
-        String substring;
-        for (String word : words) {
-//            // TODO: найти слово по форме
-//            //  на странице может быть несколько совпадений
-////            if (lf.getLemmaSet(word).contains(lemma)) {
-
-            // TODO: найти слово по первой лемме, и далее по всем, получить их индексы
-            //  можно указать до слова любые знаки кро
-            //  леммы могут быть в другом порядке поэтому нужен Map или лист отсортированный по index start
-            //  если уже была добалвена значение должно перезаписаться только если ближе к остальныи по index start
-            //  если ншел по всем лемам можно остановить поиск
-            //  - можно делать поиск по элемента h1 потом h2 meta=description
-            //  - в зависимости от тэга установить relevance обьявить ее списком или map
-            //  - при этом иметь один обьект по поиску из которого сформируем snippet
-            String lemma = lemmas.stream().filter(l -> lf.isLemmaApplyWord(l, word)).findFirst().orElse(null);
-            if (lemma != null) {        //   lf.isLemmaApplyWord(lemma, word)) {
-                Matcher m = Pattern.compile(String.format("\\b%s\\b", word), Pattern.CASE_INSENSITIVE).matcher(text);
-                if (m.find()) {
-                    index = m.start();
-                    substring = index - 100 > -1 ? text.substring(index - 100, index) : text.substring(0, index);
-                    String[] startSnipet = substring.split("[\\n!.?]"); // |<[^>]*>]")
-
-                    index = m.end();
-                    substring = index + 100 < text.length() - 1 ? text.substring(index, index + 100) : text.substring(index);
-                    String[] endSnipet = substring.split("[\\n!.?]"); // |<[^>]*>");
-
-                    // TODO: что если массив будет пустой то надо подставить ""
-                    //  взять несколько предложений пока не наберется кол-во слов
-                    snippet.append(startSnipet[startSnipet.length - 1].trim())
-                            .append(" <b>").append(m.group()).append("</b> ")
-                            .append(endSnipet[startSnipet.length - 1].trim());
-                    return snippet.toString();
-                }
-            }
-        }
-        return "";
+//      snippet.setPrefix(wordStart - 100 > -1 ? text.substring(wordStart - 100, wordStart) : text.substring(0, wordStart));
+//      snippet.setPostfix( wordEnd + 100 < text.length() - 1 ? text.substring(wordEnd, wordEnd + 100) : text.substring(wordEnd));
+//      snippet.setMidfix(text.substring(wordStart, wordEnd));
+//      snippet.addMatch(new Integer[]{wordStart, wordEnd});
     }
 
     //    private boolean isWordCloser(String lemma, int start) {
@@ -282,24 +250,47 @@ class PageSnippet {
 //    }
 }
 
-@Data
 @NoArgsConstructor
-@AllArgsConstructor
 class SnippetDto {
-    Integer start;
-    Integer end;
-    Float relevance;
-    String snippet;
-    String prefix;
-    String midfix;
-    String postfix;
-    List<Integer[]> matchers = new ArrayList<>();
+    @Getter
+    private final Set<SnippetMatch> matchers = new TreeSet<>();
+    @Getter
+    @Setter
+    private Float maxTagRelevance = null;
 
-    public void addMatch(Integer[] match) {
+    public void addMatch(SnippetMatch match) {
         matchers.add(match);
     }
 
-    public List<Integer[]> getMatchers(){
-        return matchers;
+    public boolean isMatchesEmpty() {
+        return matchers.isEmpty();
     }
 }
+
+@Getter
+@AllArgsConstructor
+class SnippetMatch implements Comparable<SnippetMatch> {
+    int start;
+    int end;
+    Float tagRelevance;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        SnippetMatch that = (SnippetMatch) o;
+        return start == that.start;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(start);
+    }
+
+    @Override
+    public int compareTo(SnippetMatch o) {
+        return Integer.compare(start, o.start);
+    }
+}
+
+
