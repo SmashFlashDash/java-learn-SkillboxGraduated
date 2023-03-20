@@ -57,17 +57,12 @@ public class SearchServiceImpl implements SearchService {
         // }
 
         // TODO: сгенеирить обьект  можно пройти forkJoin
-//        Document.OutputSettings outputSettings = new Document.OutputSettings();
-//        outputSettings.prettyPrint(false);
         List<SearchData> searchDataList = new ArrayList<>();
         for (PageEntity page : pages) {
             SiteEntity site = page.getSite();
             Document doc = Jsoup.parse(page.getContent());
             PageSnippet pageSnippet = new PageSnippet(doc, lf, lemmaSet);
 
-            // TODO: сделать обьект в который будет происходить парсинг текста
-            //  циклом идти по тэгам, получать текст тэгов и получать релевантность
-            //  если все найдены выйти из цикла
             SearchData data = new SearchData();
             searchDataList.add(data);
             data.setSite(site.getUrl());
@@ -116,30 +111,6 @@ class PageSnippet {
     private final Set<String> lemmas;
     private final Map<String, SnippetDto> snippetsMap;
 
-    // TODO: можно искать по селектору тэгу сниппеты лемм
-    //  если ищем по тэгу нужно сразу брать сниппет как нашли
-    //  затем убираем лемму из поиска, или при повторном нахождении сравниваем релевантность и можем сохранить старую релевантноссть
-    //  но  засейвить новый сниппет
-    //  как только все сниппеты найдены прекратить поиск
-    //  - если ищем по всему тексту сразу также находим сниппеты и закидываем, например можно получить все элементы и тогда будет зависимость релевантности
-    //  - стоит найти совпадения сначала в одних тэгах или самые ближние друг к другу
-    //  тоесть сразу взять весь текст и идти по нему
-    //  если берем весь текст html без документа не сможем определить тэг но поиск буде быстрее
-    //  findSnippets(Jsoup.clean(document.body().html(), "", Safelist.simpleText(), outputSettings));
-    //  - весь текст по html
-    //  - все элементы html и текст по каждому
-    //  - выбрать элементы которые ищем и идти по каждому
-    //  - выбрать сначала один тип тэга потом другой и т.д.
-    //  самое оптимальное наверное получить все элекменты документа и брать по ним текст
-    //  -
-    //  - самое оптимальное при парсинге старниц, записывать кол-во лемм на странице и определать наибольшей тэг и плюсовать его в таблицу
-    //  - потом когда ищем поисковый запрос преобразуем его в леммы, и ищем страницы с такими леммаи
-    //  - потом ищем сниппеты
-    //  -
-    //  //  поиск регуляркой по сниппетам
-    //  //  (([\\n.?!;]|...)(word1|word2)([\\n.?!;]|...))
-    //  // если найдет в одном и том же предложении можно сравнить
-    //  тогда когда ищем сниппет берем только слово
     public PageSnippet(Document document, LemmaFinder lf, Set<String> lemmas) {
         this.document = document;
         this.lf = lf;
@@ -157,30 +128,16 @@ class PageSnippet {
         }
     }
 
-    // TODO: в обьекте this.snippets записываем в snippet и relevance by tag
-    //  snippet надо брать в три строки
-    //  можео взять регуляркой по этому слову по предложению в +- по кол-ву символов не менее
-    //  либо взять substring по text
-    //  либо взять массивом по словам, но там не все знаки препинаня
-    // разделить на предложения .split("[\\n!.?]"); // |<[^>]*>]")
-
-    // TODO: или сначала сплитануть текст на предложения а потом на слова
-    //  и в сниппет кидать предложение которое идет и предыдущее и следующее
-    //  а если они не последовательны то соединять ... и не к началу предложения а за несколько слов
-    //  -
-    //  или записать все матчеры, а парсить уже весь текст когда получаем сниппет
-
-    // TODO: взять на 100 символов в стороны, разделить текст на предложения
-    // записать префикс и постфикс сниппета и самов слово
-
     // TODO: использовать HashMap<String, SnippetdDto>
     //  с полями maxTagRelevace, List<Iteger[]>
     //  в гет сниппет, найдем первый с минимальной длинной
     //  в остпльнрых ищем ближайшие к нему по старт
     //  берем по +100 -100 символов от них
     private void findSnippets(String text, String tag) {
+        final String lowerText = text.toLowerCase(Locale.ROOT);
         Float tagRelevance = tag2Relevance.get(tag) != null ? tag2Relevance.get(tag) : 0F;
-        String[] words = text.toLowerCase(Locale.ROOT).replaceAll("([^а-я\\s])", " ").trim().split("\\s+");
+
+        String[] words = lowerText.replaceAll("([^а-я\\s])", " ").trim().split("\\s+");
         for (String word : words) {
             lemmas.stream().filter(l -> lf.isLemmaApplyWord(l, word)).findFirst().ifPresent(lemma -> {
                 SnippetDto snippetDto = snippetsMap.get(lemma);
@@ -188,7 +145,7 @@ class PageSnippet {
                 if (relevance == null || relevance < tagRelevance) {
                     snippetDto.setMaxTagRelevance(tagRelevance);
                 }
-                Matcher m = Pattern.compile(String.format("\\b%s\\b", word), Pattern.CASE_INSENSITIVE).matcher(text);
+                Matcher m = Pattern.compile(String.format("\\b%s\\b", word), Pattern.CASE_INSENSITIVE).matcher(lowerText);
                 while (m.find()) {
                     SnippetMatch match = new SnippetMatch(m.start(), m.end(), tagRelevance);
                     snippetDto.addMatch(match);
@@ -218,16 +175,51 @@ class PageSnippet {
     }
 
     public String getSnippet() {
-        // TODO: выстроить ближайшие сниппеты по matches
-        //  этл сортированный List по matches start
-        //  -
-        //  идти по листу совпадений
-        //  когда найдем сниппет
-        //  -
-        for (Map.Entry<String, SnippetDto> s : snippetsMap.entrySet()) {
-            s.getValue().getMatchers();
+        // TODO:
+        //  сначала найдем самый больший по старт первый элемент
+        //  потом найдем в оставшихся lemma ближайшие к нему
+        //  считаем расстояние по тексту
+        //  прасим substring или регуляркой делим на предложения
+        //  - можно сортирнуть по релевантности тэга
+        //  кинуть только нужные тэги в jsoup.select
+
+        // TODO: можно те которые в одном тэге выводить через ... если не хватает расстояния
+        //  те которые в другом тэге выводить по максимально релевантности
+        //  задаться кол-вом символов на весь сниппет
+        //  разделить сколько-кол-во символов на тэг, не это надо определять когда уже нашли совпадения в одном тэге
+        //  поэтому можно передать jsoup element в SnippetMatch
+
+        Optional<Map.Entry<String, SnippetDto>> longestEntry = snippetsMap.entrySet()
+                .stream().filter(i -> !i.getValue().isMatchesEmpty())
+                .max(Comparator.comparingInt(x -> x.getValue().getMatchers().first().getStart()));
+        if (longestEntry.isEmpty()) {
+            return "Не нашли <b>сниппет</b>";
         }
-        return "";
+
+        //snippetsMap.remove(s.get().getKey());
+        TreeSet<SnippetMatch> matches = new TreeSet<>();
+        SnippetMatch longestMatch = longestEntry.get().getValue().getMatchers().first();
+        matches.add(longestMatch);
+        // TODO: пройти по map найти ближайш по snippet
+//        List<Optional<SnippetMatch>> collect = snippetsMap.values().stream().filter(i -> !i.getMatchers().equals(s.get().getValue().getMatchers()))
+//                .map(x -> x.getMatchers().stream().min(Comparator.comparingInt(i -> (i.getStart() - longestMatch.getStart()))))
+//                .collect(Collectors.toList());
+        for (SnippetDto s : snippetsMap.values()) {
+            // хотим найти ближайших
+            if (s.equals(longestEntry.get().getValue())) {
+                continue;
+            }
+            // TODO: можно закинуть в список ifPresentOrElse если не найдет совпадений что не найдено
+            //  добавить в конце сниппета
+            //  в тэгах брать meta и атрибут description
+            s.getMatchers().stream().min(Comparator.comparingInt(i -> (i.getStart() - longestMatch.getStart())))
+                    .ifPresent(matches::add);
+        }
+        // TODO: сконнектить сниппеть
+
+        return "Не нашли <b>сниппет</b>";
+
+
 //      snippet.setPrefix(wordStart - 100 > -1 ? text.substring(wordStart - 100, wordStart) : text.substring(0, wordStart));
 //      snippet.setPostfix( wordEnd + 100 < text.length() - 1 ? text.substring(wordEnd, wordEnd + 100) : text.substring(wordEnd));
 //      snippet.setMidfix(text.substring(wordStart, wordEnd));
@@ -253,7 +245,7 @@ class PageSnippet {
 @NoArgsConstructor
 class SnippetDto {
     @Getter
-    private final Set<SnippetMatch> matchers = new TreeSet<>();
+    private final TreeSet<SnippetMatch> matchers = new TreeSet<>();
     @Getter
     @Setter
     private Float maxTagRelevance = null;
