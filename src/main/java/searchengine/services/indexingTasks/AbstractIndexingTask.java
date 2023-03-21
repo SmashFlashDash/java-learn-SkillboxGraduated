@@ -1,6 +1,4 @@
-package searchengine.dto.indexingTasks;
-
-import searchengine.dto.indexing.IndexingResponse;
+package searchengine.services.indexingTasks;
 
 import java.util.concurrent.RecursiveTask;
 

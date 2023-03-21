@@ -4,7 +4,7 @@ package searchengine.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ForkJoinPoolFactoryBean;
-import searchengine.dto.indexingTasks.LemmaFinder;
+import searchengine.services.indexingTasks.LemmaFinder;
 
 import java.io.IOException;
 

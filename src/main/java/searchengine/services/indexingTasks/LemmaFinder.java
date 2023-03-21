@@ -1,4 +1,4 @@
-package searchengine.dto.indexingTasks;
+package searchengine.services.indexingTasks;
 
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;

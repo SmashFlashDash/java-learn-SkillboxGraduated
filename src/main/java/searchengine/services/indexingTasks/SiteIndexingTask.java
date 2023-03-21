@@ -1,4 +1,4 @@
-package searchengine.dto.indexingTasks;
+package searchengine.services.indexingTasks;
 
 import org.jsoup.HttpStatusException;
 import org.jsoup.UnsupportedMimeTypeException;
