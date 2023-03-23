@@ -63,7 +63,8 @@ public class SearchServiceImpl implements SearchService {
             data.setSite(site.getUrl());
             data.setSiteName(site.getName());
             data.setTitle(doc.title());
-            data.setSnippet(pageSnippet.getSnippetByElement());
+            //data.setSnippet(pageSnippet.getSnippetByElement());
+            data.setSnippet(pageSnippet.getSnippet2());
             data.setRelevance(1.0F);
         }
         return new SearchResponse(true, searchDataList.size(), searchDataList);
