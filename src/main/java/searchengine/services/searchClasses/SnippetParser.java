@@ -49,6 +49,8 @@ public class SnippetParser {
     private final Set<MapperElement2Match> snippetsSetDifficult = new TreeSet<>();
     private final Set<Snippet> snippetsSet = new TreeSet<>();
     private final String documentText;
+    private final int maxSnippetLength = 300;
+    private final int prefixSnippetLength = 50;
 
     public SnippetParser(Document document, LemmaFinder lf, Set<String> lemmas) {
         this.document = document;
@@ -92,24 +94,11 @@ public class SnippetParser {
     }
 
     private void findSnippetsByAnotherWay(Document document) {
-        // TODO: надо ли идти по тэгам
-        //  если надо идити по тексту, если \\n то новый тэг ставить разделитель
-        //  найти в тексте максимальную кол-во лемм в длинне сниппета
-        //  если меньше минимальной длинны, то поставить ... и зкаинуть следующий тэг
-
-        // можно пройти по всему тексту и найти все слова в upperCase которые соовтетсвую леммам
-        // составить из них регулярку
-        // найти все матчеры
-        // найти матчер в диапазоне длинны сниппета, с максимальным кол-вом повторений, и первое слово с большой буквы ???
-        // отсортировать коллекцию этих матчеров, и взять сниппеты
-        // TODO: как найти слова в uppercase
-        int snippetLength = 300;
         String lowerText = documentText.toLowerCase(Locale.ROOT);
-        String[] words = documentText.replaceAll("([^А-Яа-я\\s])", " ").trim().split("\\s+");
         String[] lowWords = lowerText.replaceAll("([^а-я\\s])", " ").trim().split("\\s+");
-        Set<Match> matches = new TreeSet<>();
 
-        // находим все леммы на странице int end
+        // находим все леммы на странице записываем их в mathces
+        Set<Match> matches = new TreeSet<>();
         Arrays.stream(lowWords).forEach(word -> {
             lemmas.stream().filter(l -> lf.isLemmaApplyWord(l, word)).findFirst().ifPresent(lemma -> {
                 Matcher m = Pattern.compile(String.format("\\b%s\\b", word), Pattern.CASE_INSENSITIVE).matcher(lowerText);
@@ -120,7 +109,7 @@ public class SnippetParser {
         });
 
         // TODO: удобно сделать в классе Snippet и вернуть коллецию сниппетов
-        // собираем из matches обьекты snippet
+        // собираем из matches snippet
         Match[] matchesArray = matches.toArray(new Match[0]);
         IntStream.range(0, matches.size()).forEach(iArray -> {
             Snippet snippet = new Snippet();
@@ -133,7 +122,7 @@ public class SnippetParser {
                 // слудующий если до него меньше чем до разрешенного сниппета
                 Match m = matchesArray[iArray + iSnippet];
                 // TODO: можно вынести в константу
-                if (m.getEnd() - startSnippet < 300 - 100) {
+                if (m.getEnd() - startSnippet < maxSnippetLength - prefixSnippetLength * 2) {
                     snippet.addMatch(m);
                 } else {
                     break;
@@ -197,38 +186,33 @@ public class SnippetParser {
         // TODO: скинуть в методы функции getPsotfix и getPrefixs
         // TODO: рассчитать длинну на лемму и исходя из этого подбирать длинну сниппета
         // это также зависит от функции find, т.к. сниппет там собиарется
+
+
         snippetsSet.forEach(snippet -> {
             TreeSet<Match> matches = snippet.getMatchesSet();
             if (matches.isEmpty()) {
                 return;
             }
+
+            StringBuilder string = new StringBuilder();
             Match first = matches.first();
             Match last = matches.last();
-            Match[] matchesArray = matches.toArray(new Match[0]);
+            if (first.equals(last)) {
+                string.append(getPrefix(first));
+                string.append("<b>");
+                string.append(documentText, first.start, first.end);
+                string.append("</b>");
+                string.append(getPostfix(first));
+                return;
+            }
+
+            // TODO: здесь наверное циклом т.к. надо проверить какие леммы нужны в сниппете
             int range = 50;
-            StringBuilder string = new StringBuilder();
+            Match[] matchesArray = matches.toArray(new Match[0]);
             IntStream.range(0, matchesArray.length).forEach(i -> {
                 Match match = matchesArray[0];
-                if (match.equals(first) && match.equals(last)) {
-                    // TODO: это можно вынести без стрима для производительности
-                    String[] prefixSplit = (match.start - range > -1 ?
-                            documentText.substring(match.start - range, match.start) :
-                            documentText.substring(0, match.start)).split("[\n?!.]+");  // "[?!.](\\s+|$)"
-                    String[] postfixSplit = (match.end + range < documentText.length() - 1 ?
-                            documentText.substring(match.end, match.end + range) :
-                            documentText.substring(match.end)).split("[\n?!.]+");   // "[?!.](\\s+|$)"
-                    // TODO: нужно разделить по \s и добавить .. если не найден разделитель
-                    string.append(prefixSplit[prefixSplit.length - 1]);
-                    string.append("<b>");
-                    string.append(documentText, match.start, match.end);
-                    string.append("</b>");
-                    string.append(postfixSplit[0]);
-                } else if (match.equals(first)) {
-                    String[] prefixSplit = (match.start - range > -1 ?
-                            documentText.substring(match.start - range, match.start) :
-                            documentText.substring(0, match.start)).split("[\n?!.]+");  // "[?!.](\\s+|$)"
-                    String prefix = prefixSplit[prefixSplit.length - 1];
-                    string.append(prefix);
+                if (match.equals(first)) {
+                    string.append(getPrefix(match));
                     string.append("<b>");
                     string.append(documentText, match.start, match.end);
                     string.append("</b>");
@@ -239,10 +223,7 @@ public class SnippetParser {
                     string.append("<b>");
                     string.append(documentText, match.start, match.end);
                     string.append("</b>");
-                    String[] postfixSplit = (match.end + range < documentText.length() - 1 ?
-                            documentText.substring(match.end, match.end + range) :
-                            documentText.substring(match.end)).split("[\n?!.]+");   // "[?!.](\\s+|$)"
-                    string.append(postfixSplit[0]);
+                    string.append(getPostfix(match));
                 } else {
                     Match prevMatch = matchesArray[i - 1];
                     string.append(documentText, prevMatch.end, match.start);
@@ -258,6 +239,22 @@ public class SnippetParser {
         });
         return "";
     }
+
+    // TODO: нужно разделить по \s и добавить .. если не найден разделитель
+    private String getPrefix(Match match) {
+        String[] prefixSplit = (match.start - prefixSnippetLength > -1 ?
+                documentText.substring(match.start - prefixSnippetLength, match.start) :
+                documentText.substring(0, match.start)).split("[\n?!.]+");  // "[?!.](\\s+|$)"
+        return prefixSplit[prefixSplit.length - 1];
+    }
+
+    private String getPostfix(Match match) {
+        String[] postfixSplit = (match.end + prefixSnippetLength < documentText.length() - 1 ?
+                documentText.substring(match.end, match.end + prefixSnippetLength) :
+                documentText.substring(match.end)).split("[\n?!.]+");   // "[?!.](\\s+|$)"
+        return postfixSplit[0];
+    }
+
 
     /**
      * находит слово, выбирает предложение, но при этом стирает знаки перепинания предложения
