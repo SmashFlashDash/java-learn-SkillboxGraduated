@@ -8,6 +8,7 @@ import java.util.*;
 @Getter(AccessLevel.PRIVATE)
 class Snippet implements Comparable<Snippet> {
     int countStartUpCse = 0;
+    @Getter(AccessLevel.PUBLIC)
     private final Set<String> lemmaSet = new HashSet<>();      // какие леммы в элемента, дублирует matchesMap.keys()
     private final Set<Match> matchesSet = new TreeSet<>();    // упорядоченая коллекция слов в элемента
     // вариант мэп, минус что все совпадения не совпадают

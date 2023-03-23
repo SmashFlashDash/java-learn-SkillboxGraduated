@@ -121,7 +121,7 @@ public class SnippetParser {
                 // первый сниппет полюбому надо добавить
                 // слудующий если до него меньше чем до разрешенного сниппета
                 Match m = matchesArray[iArray + iSnippet];
-                // TODO: можно вынести в константу
+                // TODO: не совсем верно работает предыдущий snippet может попасть в зазор prefix
                 if (m.getEnd() - startSnippet < maxSnippetLength - prefixSnippetLength * 2) {
                     snippet.addMatch(m);
                 } else {
@@ -187,57 +187,27 @@ public class SnippetParser {
         // TODO: рассчитать длинну на лемму и исходя из этого подбирать длинну сниппета
         // это также зависит от функции find, т.к. сниппет там собиарется
 
-
-        snippetsSet.forEach(snippet -> {
-            TreeSet<Match> matches = snippet.getMatchesSet();
-            if (matches.isEmpty()) {
-                return;
+        // TODO: здесь не forEAch
+        StringBuilder builder = new StringBuilder();
+        snippetsSet.stream().takeWhile(i -> !lemmas.isEmpty())
+                .filter(i -> i.getLemmaSet().stream().anyMatch(lemmas::contains)).map(snippet -> {
+            lemmas.removeAll(snippet.getLemmaSet());
+            String string = getSnippetPartSting(snippet);
+            // TODO: или на знаки законченного предложения
+            if (!string.endsWith("\n")) {
+                string = string.concat("... ");
             }
+            snippet.setSnippet(string);
+            return string;
+        }).forEach(builder::append);
 
-            StringBuilder string = new StringBuilder();
-            Match first = matches.first();
-            Match last = matches.last();
-            if (first.equals(last)) {
-                string.append(getPrefix(first));
-                string.append("<b>");
-                string.append(documentText, first.start, first.end);
-                string.append("</b>");
-                string.append(getPostfix(first));
-                return;
-            }
-
-            // TODO: здесь наверное циклом т.к. надо проверить какие леммы нужны в сниппете
-            int range = 50;
-            Match[] matchesArray = matches.toArray(new Match[0]);
-            IntStream.range(0, matchesArray.length).forEach(i -> {
-                Match match = matchesArray[0];
-                if (match.equals(first)) {
-                    string.append(getPrefix(match));
-                    string.append("<b>");
-                    string.append(documentText, match.start, match.end);
-                    string.append("</b>");
-                } else if (match.equals(last)) {
-                    // TODO: от предыдущено энд до нового энд
-                    Match prevMatch = matchesArray[i - 1];
-                    string.append(documentText, prevMatch.end, match.start);
-                    string.append("<b>");
-                    string.append(documentText, match.start, match.end);
-                    string.append("</b>");
-                    string.append(getPostfix(match));
-                } else {
-                    Match prevMatch = matchesArray[i - 1];
-                    string.append(documentText, prevMatch.end, match.start);
-                    string.append("<b>");
-                    string.append(documentText, match.start, match.end);
-                    string.append("</b>");
-                }
-            });
-            String snippetString = string.toString();
-            // заменить \n на как в гугле " * ", если не дошли до \n поставить ...
-            // но это можно делвать в getSnippet
-            snippet.setSnippet(string.toString());
-        });
-        return "";
+        if (!lemmas.isEmpty()) {
+            builder.append("<br/>Не найдено: <s>");
+            builder.append(String.join("</s>, <s>", lemmas));
+            builder.append(".");
+        }
+        String snippet = builder.toString();
+        return snippet.replaceAll("\n", " * ");
     }
 
     // TODO: нужно разделить по \s и добавить .. если не найден разделитель
@@ -255,6 +225,50 @@ public class SnippetParser {
         return postfixSplit[0];
     }
 
+    private String getSnippetPartSting(Snippet snippet) {
+        // TODO: можно возвращать boolean и делать setSnippet
+        TreeSet<Match> matches = snippet.getMatchesSet();
+        if (matches.isEmpty()) {
+            return "";
+        }
+        StringBuilder string = new StringBuilder();
+        Match first = matches.first();
+        Match last = matches.last();
+        if (first.equals(last)) {
+            string.append(getPrefix(first));
+            string.append("<b>");
+            string.append(documentText, first.start, first.end);
+            string.append("</b>");
+            string.append(getPostfix(first));
+            return string.toString();
+        }
+        // TODO: здесь наверное циклом т.к. надо проверить какие леммы нужны в сниппете хотя можно поставить takewhile
+        Match[] matchesArray = matches.toArray(new Match[0]);
+        IntStream.range(0, matchesArray.length).forEach(i -> {
+            Match match = matchesArray[0];
+            if (match.equals(first)) {
+                string.append(getPrefix(match));
+                string.append("<b>");
+                string.append(documentText, match.start, match.end);
+                string.append("</b>");
+            } else if (match.equals(last)) {
+                // TODO: от предыдущено энд до нового энд
+                Match prevMatch = matchesArray[i - 1];
+                string.append(documentText, prevMatch.end, match.start);
+                string.append("<b>");
+                string.append(documentText, match.start, match.end);
+                string.append("</b>");
+                string.append(getPostfix(match));
+            } else {
+                Match prevMatch = matchesArray[i - 1];
+                string.append(documentText, prevMatch.end, match.start);
+                string.append("<b>");
+                string.append(documentText, match.start, match.end);
+                string.append("</b>");
+            }
+        });
+        return string.toString();
+    }
 
     /**
      * находит слово, выбирает предложение, но при этом стирает знаки перепинания предложения
