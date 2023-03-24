@@ -1,4 +1,4 @@
-package searchengine.services.indexingTasks;
+package searchengine.services.indexing;
 
 import java.util.concurrent.RecursiveTask;
 
