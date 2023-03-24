@@ -10,7 +10,7 @@ import searchengine.model.LemmaEntity;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.repositories.LemmaRepository;
-import searchengine.services.indexing.LemmaFinder;
+import searchengine.config.LemmaFinder;
 import searchengine.services.search.SnippetParser;
 
 import java.util.ArrayList;
@@ -22,19 +22,9 @@ import java.util.stream.IntStream;
 @Service
 @RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
-
-    //        public Page<Book> getPageOfNewBooksDateBetween(Date from, Date to, Integer offset, Integer limit) {
-//            return bookRepository.findAllByPubDateBetweenOrderByPubDateDesc(from, to, PageRequest.of(offset, limit));
-//        }
-
     private final LemmaRepository lemmaRepository;
     private final LemmaFinder lf;
 
-
-    // TODO:
-    //  - не получается получить правильно сниппеты соответсвующие контенту сайта
-    //  - отсортировать и вернуть список сайтов
-    //  - как возвращать Pageble<SearchData>
     public SearchResponse search(String query, Integer offset, Integer limit) {
         Set<String> lemmaSet = lf.getLemmaSet(query);
         List<LemmaEntity> lemmas = lemmaRepository.findAllByLemmaInOrderByFrequencyAsc(lemmaSet);

@@ -4,6 +4,7 @@ import org.jsoup.HttpStatusException;
 import org.jsoup.UnsupportedMimeTypeException;
 import org.jsoup.nodes.Document;
 import searchengine.config.JsoupConfig;
+import searchengine.config.LemmaFinder;
 import searchengine.model.EnumSiteStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
@@ -74,7 +75,7 @@ public class PageIndexingTask extends AbstractIndexingTask {
 
         Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
         synchronized (PageIndexingTask.class) {
-            indexingService.saveLemmasMap(page, lemmas);
+            indexingService.saveLemmasIndexes(page, lemmas);
         }
         return true;
     }

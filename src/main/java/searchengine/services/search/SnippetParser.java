@@ -4,7 +4,7 @@ import lombok.Getter;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import searchengine.services.indexing.LemmaFinder;
+import searchengine.config.LemmaFinder;
 
 import java.util.*;
 import java.util.regex.Matcher;

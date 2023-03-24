@@ -7,6 +7,7 @@ import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import searchengine.config.JsoupConfig;
+import searchengine.config.LemmaFinder;
 import searchengine.controllers.ApiController;
 import searchengine.dto.indexing.SiteData;
 import searchengine.model.EnumSiteStatus;
@@ -130,7 +131,7 @@ public class SiteIndexingTask extends AbstractIndexingTask {
 
         Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
         synchronized (SiteIndexingTask.class) {
-            indexingService.saveLemmasMap(page, lemmas);
+            indexingService.saveLemmasIndexes(page, lemmas);
         }
 
         List<SiteIndexingTask> tasks = walkSiteLinks(doc);
