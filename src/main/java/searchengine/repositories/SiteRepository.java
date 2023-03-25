@@ -10,9 +10,12 @@ import java.util.List;
 @Repository
 public interface SiteRepository extends JpaRepository<SiteEntity, Long> {
     @Transactional
-    Integer deleteByName(String name);
+    long deleteByName(String name);
+
     @Transactional
     List<SiteEntity> deleteAllByNameIn(List<String> names);
+
     List<SiteEntity> findAllByNameIn(List<String> names);
+
     SiteEntity findByName(String name);
 }

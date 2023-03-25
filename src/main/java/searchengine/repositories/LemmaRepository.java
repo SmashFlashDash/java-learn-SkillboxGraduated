@@ -5,10 +5,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
-import searchengine.model.IndexEntity;
 import searchengine.model.LemmaEntity;
 
-import javax.persistence.ManyToMany;
 import java.util.List;
 
 @Repository
@@ -25,5 +23,7 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Long> {
     @Modifying
     @Query("UPDATE LemmaEntity l SET l.frequency = l.frequency - 1 WHERE l.id IN (:indexes)")
     void updateBeforeDeleteIndexes(List<Long> indexes);
+
+    List<LemmaEntity> findAllByLemmaInOrderByFrequencyAsc(Iterable<String> s);
 
 }

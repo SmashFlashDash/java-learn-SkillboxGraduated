@@ -1,31 +1,27 @@
-package searchengine.classes;
+package searchengine.config;
 
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.*;
 
-//@Component
-//@Scope("prototype")
 public class LemmaFinder {
     private static final String WORD_TYPE_REGEX = "\\W\\w&&[^а-яА-Я\\s]";
     private static final String[] particlesNames = new String[]{"МЕЖД", "ПРЕДЛ", "СОЮЗ"};
     private final LuceneMorphology luceneMorphology;
 
-    public static LemmaFinder getInstance() throws IOException {
-        LuceneMorphology morphology= new RussianLuceneMorphology();
-        return new LemmaFinder(morphology);
-    }
-
     private LemmaFinder(LuceneMorphology luceneMorphology) {
         this.luceneMorphology = luceneMorphology;
     }
 
-    private LemmaFinder(){
+    private LemmaFinder() {
         throw new RuntimeException("Disallow construct");
+    }
+
+    public static LemmaFinder getInstance() throws IOException {
+        LuceneMorphology morphology = new RussianLuceneMorphology();
+        return new LemmaFinder(morphology);
     }
 
     /**
@@ -82,6 +78,12 @@ public class LemmaFinder {
             }
         }
         return lemmaSet;
+    }
+
+    public Boolean isLemmaApplyWord(String lemma, String word) {
+        return !word.isEmpty() && isCorrectWordForm(word) &&
+                !anyWordBaseBelongToParticle(luceneMorphology.getMorphInfo(word))
+                && luceneMorphology.getNormalForms(word).contains(lemma);
     }
 
     private boolean anyWordBaseBelongToParticle(List<String> wordBaseForms) {
