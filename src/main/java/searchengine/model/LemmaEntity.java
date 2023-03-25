@@ -10,14 +10,6 @@ import java.util.List;
 @Entity
 @Getter
 @Setter
-// @Table(name = "lemma",
-//         indexes = {@Index(name = "uniqueLemmaSite", columnList = "site_id, lemma", unique = true)
-// })
-// @Column(nullable = false)
-// Long siteId;
-// @ManyToOne(fetch = FetchType.LAZY)
-// @JoinColumn(name = "siteId", insertable = false, updatable = false)
-// SiteEntity siteEntity;
 @Table(name = "lemma",
         uniqueConstraints = @UniqueConstraint(columnNames = {"site_id", "lemma"})
 )

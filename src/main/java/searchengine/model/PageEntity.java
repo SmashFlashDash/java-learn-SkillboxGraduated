@@ -12,19 +12,6 @@ import java.util.List;
 @Setter
 @Table(name = "page")
 @NoArgsConstructor
-//@Table(name = "page", indexes = @Index(columnList = "path(50)"))
-//@Table(name = "page",
-//        uniqueConstraints = @UniqueConstraint(columnNames = {"path"})
-//)
-// Caused by: java.sql.SQLSyntaxErrorException: BLOB/TEXT column 'path' used in key specification without a key length
-// hibernate не поддерживает указать длину индекса на поле TEXT что обязательно в mySQL, поэтому индекс создается в schema.sql
-// создать индекс отдельно в schema.sql
-// или создать таблицы для бд в schema.sql и выключить ddl-auto
-//    @Column(name = "siteId",nullable = false)
-//    Long siteId;
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "siteId", insertable = false, updatable = false)
-//    SiteEntity siteEntity;
 public class PageEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

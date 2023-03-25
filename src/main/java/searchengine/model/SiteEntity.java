@@ -19,8 +19,13 @@ public class SiteEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
-    //    @Column(columnDefinition = "ENUM('INDEXING','INDEXED','FAILED')",
-//            nullable = false)
+
+    @Column(columnDefinition = "VARCHAR(255)", nullable = false)
+    String name;
+
+    @Column(columnDefinition = "VARCHAR(255)", nullable = false)
+    String url;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     EnumSiteStatus status;
@@ -33,27 +38,15 @@ public class SiteEntity {
     @Column(columnDefinition = "TEXT")
     String lastError;
 
-    @Column(columnDefinition = "VARCHAR(255)", nullable = false)
-    String url;
-
-    @Column(columnDefinition = "VARCHAR(255)", nullable = false)
-    String name;
-
     @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     List<PageEntity> pages;
+
+    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY)
+    List<LemmaEntity> lemmas;
 
     public SiteEntity(String name, String url, EnumSiteStatus status) {
         this.name = name;
         this.url = url;
         this.status = status;
     }
-
-//    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
-//    List<LemmaEntity> lemmas;
-
-//    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE, orphanRemoval = true)
-//    List<PageEntity> pages;
-//
-//    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE, orphanRemoval = true)
-//    List<LemmaEntity> lemmas;
 }
