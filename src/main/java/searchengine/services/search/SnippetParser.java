@@ -89,6 +89,7 @@ public class SnippetParser {
 
     /**
      * поиск сниппета по элемента jsoup, определяет релевантность сниппета, в каком тэге найдены совпадения
+     *
      * @param document
      */
     @Deprecated
@@ -130,6 +131,7 @@ public class SnippetParser {
 
     /**
      * получить самый релевантный сниппет
+     *
      * @return
      */
     public String getSnippet() {
@@ -204,6 +206,7 @@ public class SnippetParser {
 
     /**
      * получить строку из сниппета
+     *
      * @param snippet
      * @return
      */
@@ -250,6 +253,7 @@ public class SnippetParser {
      * создать snippet от кждого match
      * snippet включает в себя match которые расположены рядом с первым match в тексте
      * match - это позиция найденного слова в тексте
+     *
      * @param matches
      * @return
      */

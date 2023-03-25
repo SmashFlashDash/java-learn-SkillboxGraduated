@@ -4,13 +4,15 @@ import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Service;
+import searchengine.config.LemmaFinder;
 import searchengine.dto.search.SearchData;
 import searchengine.dto.search.SearchResponse;
+import searchengine.model.IndexEntity;
 import searchengine.model.LemmaEntity;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
+import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
-import searchengine.config.LemmaFinder;
 import searchengine.services.search.SnippetParser;
 
 import java.util.ArrayList;
@@ -23,6 +25,7 @@ import java.util.stream.IntStream;
 @RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
     private final LemmaRepository lemmaRepository;
+    private final IndexRepository indexRepository;
     private final LemmaFinder lf;
 
     public SearchResponse search(String query, Integer offset, Integer limit) {
@@ -37,7 +40,6 @@ public class SearchServiceImpl implements SearchService {
             }
         }
 
-        // TODO: сгенеирить обьект  можно пройти сделать ThreadExecutor для того
         List<SearchData> searchDataList = new ArrayList<>();
         for (PageEntity page : pages) {
             SiteEntity site = page.getSite();
@@ -51,8 +53,9 @@ public class SearchServiceImpl implements SearchService {
             data.setTitle(doc.title());
             data.setSnippet(pageSnippet.getSnippet());
 
-            //TODO: релевантность кол-во повторений получить для страницы с бд
-            data.setRelevance(1.0F);
+            //TODO: релевантность
+            float relevance = indexRepository.findAllByPageAndLemmaIn(page, lemmas).stream().map(IndexEntity::getRank).reduce(0F, Float::sum);
+            data.setRelevance(relevance);
         }
 
         searchDataList.sort((o1, o2) -> (int) (o2.getRelevance() - o1.getRelevance() * 100));

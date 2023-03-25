@@ -22,13 +22,7 @@ import java.util.*;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-//@Component
-//@Scope
-//@RequiredArgsConstructor
 public class SiteIndexingTask extends AbstractIndexingTask {
-
-    // TODO: можно ли внедрить service и config не делая класс Component
-    //  или сделать компонентом и настроить Scope(prototype)
     private final IndexingServiceImpl indexingService;
     private final JsoupConfig jsoupConfig;
     private final SiteEntity site;
@@ -42,6 +36,7 @@ public class SiteIndexingTask extends AbstractIndexingTask {
 
     /**
      * Создать рекурсивную задачу
+     *
      * @param site            - сущность в БД сайтай
      * @param jsoupConfig     - получать настройки Jsoup из конфига
      * @param indexingService - сервис для записи статусов Site и новых Page

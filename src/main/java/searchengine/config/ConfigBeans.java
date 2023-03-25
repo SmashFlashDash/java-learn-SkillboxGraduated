@@ -25,6 +25,9 @@ public class ConfigBeans {
     //  - можно сделать бин котоырй делает set в static поля PAge и UpdateTask
     //  - чтобы не передвать их констркутором
 
+    // сделать чтобы брал релевантность в тэг
+    // подготовить коммит с вопросами
+
     // TODO:
     //  SearchService
     //  - не получается получить правильно сниппеты соответсвующие контенту сайта
@@ -34,10 +37,11 @@ public class ConfigBeans {
     //          return bookRepository.findAllByPubDateBetweenOrderByPubDateDesc(from, to, PageRequest.of(offset, limit));
     //      }
     //  - searchDataList можно идти forkJoin хотя и так быстро ищет, поделив задачу по кол-ву страниц
-    //  Model
-    //  - ошибка в модели связи сущностей page и lemma через indexes
     //  IndexingService
-    //  - костыль в indexesService не работает Transactional в ForkJoinPool
+    //  - можно ли SiteIndexingTask внедрить service, jsoupConfig, lf через Spring
+    //  - костыль в indexesService.saveLemmasIndexes не работает Transactional в ForkJoinPool
+    //      надо entityManager.refresh(page) ужен @Transactional на метод, не работает с методами в SiteIndexingTask
+    //      entityManager.refresh(page)
     //      TransactionSynchronizationManager.setActualTransactionActive(true);
     //      TransactionSynchronizationManager.setCurrentTransactionReadOnly(true);
     //      TransactionSynchronizationManager.initSynchronization();

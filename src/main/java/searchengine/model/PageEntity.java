@@ -20,17 +20,16 @@ import java.util.List;
 // hibernate не поддерживает указать длину индекса на поле TEXT что обязательно в mySQL, поэтому индекс создается в schema.sql
 // создать индекс отдельно в schema.sql
 // или создать таблицы для бд в schema.sql и выключить ddl-auto
-public class PageEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
-    //    @Column(name = "siteId",nullable = false)
+//    @Column(name = "siteId",nullable = false)
 //    Long siteId;
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "siteId", insertable = false, updatable = false)
 //    SiteEntity siteEntity;
-    // заменить на entity
+public class PageEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    Long id;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site_id", nullable = false)
     SiteEntity site;
@@ -44,12 +43,14 @@ public class PageEntity {
     @Column(columnDefinition = "MEDIUMTEXT", nullable = false)
     String content;
 
-    // TODO: если здесь добавьит cascade не работает startIndexing при delete site
-    //  если не добавить не работает pageReposituy.delete(PageEntity) в Indexpag
-    @OneToMany(mappedBy = "page", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "page", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     List<IndexEntity> indexes;
 
-    @ManyToMany(mappedBy = "pages", fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "index",
+            joinColumns = {@JoinColumn(name = "page_id")},
+            inverseJoinColumns = {@JoinColumn(name = "lemma_id")})
     List<LemmaEntity> lemmas;
 
     public PageEntity(SiteEntity site, String path, Integer code, String content) {
@@ -58,4 +59,5 @@ public class PageEntity {
         this.code = code;
         this.content = content;
     }
+
 }

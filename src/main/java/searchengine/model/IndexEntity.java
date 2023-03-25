@@ -6,7 +6,6 @@ import lombok.Setter;
 
 import javax.persistence.*;
 
-
 @Entity
 @Getter
 @Setter
@@ -15,12 +14,6 @@ import javax.persistence.*;
 )
 @NoArgsConstructor
 public class IndexEntity {
-
-    public IndexEntity(PageEntity page, LemmaEntity lemma, Float rank) {
-        this.page = page;
-        this.lemma = lemma;
-        this.rank = rank;
-    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,4 +29,47 @@ public class IndexEntity {
 
     @Column(name = "`rank`", nullable = false)
     Float rank;
+
+    public IndexEntity(PageEntity page, LemmaEntity lemma, Float rank) {
+        this.page = page;
+        this.lemma = lemma;
+        this.rank = rank;
+    }
 }
+
+// TODO: вариант с EmbededId
+//@Entity
+//@Getter
+//@Setter
+//@Table(name = "`index`",
+//        uniqueConstraints = @UniqueConstraint(columnNames = {"page_id", "lemma_id"})
+//)
+//@NoArgsConstructor
+//public class IndexEntity {
+//
+//    public IndexEntity(PageEntity page, LemmaEntity lemma, Float rank) {
+//        this.page = page;
+//        this.lemma = lemma;
+//        this.rank = rank;
+//    }
+//
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    Long id;
+//
+//    @EmbeddedId
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    IndexKey id2;
+//
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @MapsId("pageId")
+//    @JoinColumn(name = "page_id", nullable = false)
+//    PageEntity page;
+//
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @MapsId("lemmaId")
+//    @JoinColumn(name = "lemma_id", nullable = false)
+//    LemmaEntity lemma;
+//
+//    @Column(name = "`rank`", nullable = false)
+//    Float rank;
+//}

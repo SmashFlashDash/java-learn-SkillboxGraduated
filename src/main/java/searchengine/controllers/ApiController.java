@@ -5,20 +5,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.search.SearchResponse;
 import searchengine.dto.statistics.StatisticsResponse;
-import searchengine.exceptions.OkError;
 import searchengine.services.IndexingService;
 import searchengine.services.SearchService;
 import searchengine.services.SearchServiceImpl;
 import searchengine.services.StatisticsService;
-
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Date;
 
 @RestController
 @RequestMapping("/api")

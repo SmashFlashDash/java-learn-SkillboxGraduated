@@ -1,16 +1,12 @@
 package searchengine.repositories;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
-import searchengine.model.IndexEntity;
 import searchengine.model.LemmaEntity;
 
-import javax.persistence.ManyToMany;
 import java.util.List;
 
 @Repository
@@ -27,14 +23,6 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Long> {
     @Modifying
     @Query("UPDATE LemmaEntity l SET l.frequency = l.frequency - 1 WHERE l.id IN (:indexes)")
     void updateBeforeDeleteIndexes(List<Long> indexes);
-
-//    @Transactional
-//    @Modifying
-//    @Query("FROM LemmaEntity l WHERE l.id IN (:indexes)" +
-//            "CASE WHEN l.frequency = 1 THEN DELETE l WHERE l.id IN (:indexes)")
-//    void updateBeforeDeleteIndexes2(List<Long> indexes);
-
-    //Page<LemmaEntity> findAllByLemmaInOrderByFrequencyAsc(Iterable<String> s, Pageable nextPage);
 
     List<LemmaEntity> findAllByLemmaInOrderByFrequencyAsc(Iterable<String> s);
 

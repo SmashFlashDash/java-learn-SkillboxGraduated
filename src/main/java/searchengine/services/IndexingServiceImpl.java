@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.JsoupConfig;
+import searchengine.config.LemmaFinder;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.controllers.ApiController;
@@ -18,14 +19,12 @@ import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 import searchengine.services.indexing.AbstractIndexingTask;
-import searchengine.config.LemmaFinder;
 import searchengine.services.indexing.PageIndexingTask;
 import searchengine.services.indexing.SiteIndexingTask;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
@@ -33,8 +32,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class IndexingServiceImpl implements IndexingService {
 
-    //    @PersistenceContext
-//    private final EntityManager entityManager;
+    // @PersistenceContext
+    // private final EntityManager entityManager;
+    // @Qualifier("threadExecutor2")
+    // private final Executor threadPool;
     private final SitesList sites;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
@@ -42,13 +43,11 @@ public class IndexingServiceImpl implements IndexingService {
     private final IndexRepository indexRepository;
     private final JsoupConfig jsoupConfig;
     private final ForkJoinPool forkJoinPool;
-    //    @Qualifier("threadExecutor2")
-    private final Executor threadPool;
     private final Set<AbstractIndexingTask> runningTasks = Collections.synchronizedSet(new HashSet<>());
     private final LemmaFinder lf;
     Logger logger = LoggerFactory.getLogger(ApiController.class);
 
-    // TODO: indexingService можно внедриь в task Autowired сделав SCope prototype
+    @Override
     public IndexingResponse startSitesIndexing() {
         List<Site> sitesList = sites.getSites();
         if (!runningTasks.isEmpty()) {
@@ -78,9 +77,6 @@ public class IndexingServiceImpl implements IndexingService {
         return new IndexingResponse(true);
     }
 
-    //TODO: добавить в forkJoin создать PageIndexingTask
-    // сделать интерфейс с нужными полями и кидать их в один runnigTask
-    // и запускать одной и той же птоковой функцией
     @Override
     public IndexingResponse pageIndexing(String urlString) {
         if (!runningTasks.isEmpty()) {
@@ -99,18 +95,18 @@ public class IndexingServiceImpl implements IndexingService {
 
         SiteEntity tmpSite = siteRepository.findByName(site.getName());
         SiteEntity siteEntity = tmpSite != null ? tmpSite : new SiteEntity(site.getName(), site.getUrl(), EnumSiteStatus.INDEXING);
-        // стереть page и indexes и update lemmas
+        saveSite(siteEntity);
         PageEntity pageEntity = pageRepository.findByPath(url.toString());
         if (pageEntity != null) {
             deletePage(pageEntity);
         }
-
         PageIndexingTask task = new PageIndexingTask(url, siteEntity, jsoupConfig, this, lf);
         Thread thread = new Thread(() -> threadPageUpdate(task, siteEntity));
         thread.start();
         return new IndexingResponse(true);
     }
 
+    // TODO: запускать ли потоки в ThreadExecutor или forkJoin
     private void threadPageUpdate(PageIndexingTask task, SiteEntity siteEntity) {
         runningTasks.add(task);
         try {
@@ -119,6 +115,7 @@ public class IndexingServiceImpl implements IndexingService {
                 siteEntity.setStatus(EnumSiteStatus.INDEXED);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             siteEntity.setLastError(e.getClass().getName());
             siteEntity.setStatus(EnumSiteStatus.FAILED);
         }
@@ -128,14 +125,16 @@ public class IndexingServiceImpl implements IndexingService {
 
     private void threadSiteIndexing(SiteIndexingTask task, SiteEntity siteEntity, SiteData siteData) {
         runningTasks.add(task);
-        siteRepository.deleteByName(siteData.getName());
-        saveSite(siteEntity);
         try {
+            // TODO: здесь ошибка
+            siteRepository.deleteByName(siteData.getName());
+            saveSite(siteEntity);
             Boolean res = forkJoinPool.invoke(task);
             if (res) {
                 siteEntity.setStatus(EnumSiteStatus.INDEXED);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             siteEntity.setLastError(e.getClass().getName());
             siteEntity.setStatus(EnumSiteStatus.FAILED);
         }
@@ -163,10 +162,10 @@ public class IndexingServiceImpl implements IndexingService {
         return pageRepository.existsByPath(path);
     }
 
-    // TODO: здесь костыль надо обновить page или запросить
+    // TODO: здесь костыль
     @Transactional
     public void saveLemmasIndexes(PageEntity page, Map<String, Integer> lemmas) {
-        // entityManager.refresh(page);     // нужен @Transactional на метод, не работает с методами в SiteIndexingTask
+        // entityManager.refresh(page);
         PageEntity freshPage = pageRepository.findById(page.getId()).get();
 
         List<IndexEntity> indexEntities = new ArrayList<>();
@@ -184,25 +183,14 @@ public class IndexingServiceImpl implements IndexingService {
         indexRepository.saveAll(indexEntities);
     }
 
-    // TODO: не стирает page
-    //  Cannot delete or update a parent row: a foreign key constraint fails (`search_engine`.`index`, CONSTRAINT `FK3uxy5s82mxfodai0iafb232cs` FOREIGN KEY (`page_id`) REFERENCES `page` (`id`))
+    // TODO: сделать триггером или упростить запрос
     @Transactional
     public void deletePage(PageEntity pageEntity) {
-        // TODO: можно сделать через триггер в БД или EntityListener на IndexEntity @PreRemove
-        //  и заинжектить туда indexRepository, создавать бином через config?
-        // TODO: получить все id и где frequncy = 1 удалить у остальных - 1
-        //  через nativeQuery в LemmaEntity туда передать lemmas от page
-
-        // List<Long> lemmaIds = pageEntity.getLemmas().stream().map(LemmaEntity::getId).collect(Collectors.toList());
+//        List<Long> lemmaIds = pageEntity.getLemmas().stream().map(LemmaEntity::getId).collect(Collectors.toList());
         List<Long> lemmaIds = pageEntity.getIndexes().stream().map(i -> i.getLemma().getId()).collect(Collectors.toList());
+        pageRepository.delete(pageEntity);
         lemmaRepository.deleteOneFrequencyLemmaByIndexes(lemmaIds);
         lemmaRepository.updateBeforeDeleteIndexes(lemmaIds);
-
-        // TODO: можно рефрешем воспользоваться
-        pageEntity = pageRepository.findById(pageEntity.getId()).get();
-        pageRepository.delete(pageEntity);
-//        pageRepository.findById(pageEntity.getId()).ifPresent(pageRepository::delete);
-
     }
 
     private List<SiteData> getSiteConfigs(List<Site> sitesList) {

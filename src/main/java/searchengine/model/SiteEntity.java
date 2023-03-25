@@ -2,12 +2,10 @@ package searchengine.model;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -18,17 +16,10 @@ import java.util.List;
 @NoArgsConstructor
 public class SiteEntity {
 
-    public SiteEntity(String name, String url, EnumSiteStatus status) {
-        this.name = name;
-        this.url = url;
-        this.status = status;
-    }
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
-
-//    @Column(columnDefinition = "ENUM('INDEXING','INDEXED','FAILED')",
+    //    @Column(columnDefinition = "ENUM('INDEXING','INDEXED','FAILED')",
 //            nullable = false)
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -51,8 +42,14 @@ public class SiteEntity {
     @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     List<PageEntity> pages;
 
-    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    List<LemmaEntity> lemmas;
+    public SiteEntity(String name, String url, EnumSiteStatus status) {
+        this.name = name;
+        this.url = url;
+        this.status = status;
+    }
+
+//    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+//    List<LemmaEntity> lemmas;
 
 //    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE, orphanRemoval = true)
 //    List<PageEntity> pages;

@@ -1,14 +1,16 @@
 package searchengine.services.search;
 
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.*;
 
 @Getter
 class Snippet implements Comparable<Snippet> {
-    private int countUpCaseLetter = 0;
     private final Set<String> lemmaSet = new HashSet<>();
     private final Set<Match> matchesSet = new TreeSet<>();
+    private int countUpCaseLetter = 0;
     @Getter(AccessLevel.PUBLIC)
     @Setter
     private String snippet = "";

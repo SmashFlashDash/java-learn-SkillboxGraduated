@@ -11,17 +11,17 @@ public class LemmaFinder {
     private static final String[] particlesNames = new String[]{"МЕЖД", "ПРЕДЛ", "СОЮЗ"};
     private final LuceneMorphology luceneMorphology;
 
-    public static LemmaFinder getInstance() throws IOException {
-        LuceneMorphology morphology= new RussianLuceneMorphology();
-        return new LemmaFinder(morphology);
-    }
-
     private LemmaFinder(LuceneMorphology luceneMorphology) {
         this.luceneMorphology = luceneMorphology;
     }
 
-    private LemmaFinder(){
+    private LemmaFinder() {
         throw new RuntimeException("Disallow construct");
+    }
+
+    public static LemmaFinder getInstance() throws IOException {
+        LuceneMorphology morphology = new RussianLuceneMorphology();
+        return new LemmaFinder(morphology);
     }
 
     /**
