@@ -9,24 +9,16 @@ import java.util.Objects;
 @Setter
 @Getter
 class Match implements Comparable<Match> {
-    int start;
-    int end;
-    String lemma;
-    String word;
-    boolean isStartUpLetter;
-
-    public Match(int start, int end, String lemma) {
-        this.start = start;
-        this.end = end;
-        this.lemma = lemma;
-    }
+    private final int start;
+    private final int end;
+    private final String lemma;
+    private final String word;
 
     public Match(int start, int end, String lemma, String word) {
         this.start = start;
         this.end = end;
         this.lemma = lemma;
         this.word = word;
-        this.isStartUpLetter = Character.isUpperCase(word.charAt(0));
     }
 
     @Override

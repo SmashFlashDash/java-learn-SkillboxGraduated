@@ -16,6 +16,6 @@ public interface SiteRepository extends JpaRepository<SiteEntity, Long> {
     List<SiteEntity> deleteAllByNameIn(List<String> names);
 
     List<SiteEntity> findAllByNameIn(List<String> names);
-
     SiteEntity findByName(String name);
+    SiteEntity findByUrlEquals(String url);
 }

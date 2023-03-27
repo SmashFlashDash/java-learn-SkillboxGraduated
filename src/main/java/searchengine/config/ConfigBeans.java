@@ -4,16 +4,17 @@ package searchengine.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ForkJoinPoolFactoryBean;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.io.IOException;
+import java.util.concurrent.Executor;
 
 @Configuration
 public class ConfigBeans {
 
     @Bean
     public ForkJoinPoolFactoryBean forkJoinPoolFactoryBean() {
-        final ForkJoinPoolFactoryBean poolFactory = new ForkJoinPoolFactoryBean();
-        return poolFactory;
+        return new ForkJoinPoolFactoryBean();
     }
 
     @Bean
@@ -21,12 +22,35 @@ public class ConfigBeans {
         return LemmaFinder.getInstance();
     }
 
-    // TODO: вставить сюда execitoreThread
-    //  - можно сделать бин котоырй делает set в static поля PAge и UpdateTask
-    //  - чтобы не передвать их констркутором
+    @Bean
+    public ThreadPoolTaskExecutor threadExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setDaemon(true);
+        executor.setCorePoolSize(5);
+        executor.setQueueCapacity(10);
+        executor.initialize();
+        return executor;
+    }
 
-    // сделать чтобы брал релевантность в тэг
-    // подготовить коммит с вопросами
+    // делать это в другой ветке как фича когда все доделается, чтобы ускорить парсер и потоки не ждали дргу друга
+    // TODO: в task можно не ждать join решение по задаче
+    //  а только в главном классе
+    //  поставить флаг на запщен ли compute в главном классе
+    //  results по страницам класть в set но т.к. итоговый результать boolean это может быть флаг
+    //  по каждому методу как прошел он кладет в результать true или false
+    //  в случае ошибок можно класть false
+    // не получися так сделать потому что тогда закончится поток по главному сайту,
+    // можно сделать конутер на кол-во запущенных задач и кол-во полученных результатов, и когда он сравняется
+    // значит задача законченна, но это должен быть бесконечный цикл который првоеряет этим переменные
+
+    // и вообще PageIndexingTask не надо наследовать от stopCompute
+
+    // TODO: перенсти в sercher regex паттерны в static
+
+    // ManyToMany точно ли не нужна, приходится идти циклом по всем значениям и делать запрос
+    // может с ManyTomany Hibernate быстрее работаетт обьединяя запросы джоином таблиц
+
+    // TODO: проверить порядок в котором кладутся в Set snnippets
 
     // TODO:
     //  SearchService

@@ -74,6 +74,8 @@ public class PageIndexingTask extends AbstractIndexingTask {
         }
 
         Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
+//        String content = doc.select("div[class*=content]").not("nav, aside, header, footer").text();
+//        Map<String, Integer> lemmas = lf.collectLemmas(content);
         synchronized (PageIndexingTask.class) {
             indexingService.saveLemmasIndexes(page, lemmas);
         }

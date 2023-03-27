@@ -3,6 +3,7 @@ package searchengine.services;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.springframework.beans.support.PagedListHolder;
 import org.springframework.stereotype.Service;
 import searchengine.config.LemmaFinder;
 import searchengine.dto.search.SearchData;
@@ -13,58 +14,87 @@ import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
+import searchengine.repositories.SiteRepository;
 import searchengine.services.search.SnippetParser;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.IntStream;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
+    private final SiteRepository siteRepository;
     private final LemmaFinder lf;
 
+    // TODO: сортировка расставляется при каждом запросе по разному
+    @Override
     public SearchResponse search(String query, Integer offset, Integer limit) {
         Set<String> lemmaSet = lf.getLemmaSet(query);
         List<LemmaEntity> lemmas = lemmaRepository.findAllByLemmaInOrderByFrequencyAsc(lemmaSet);
-        Set<PageEntity> pages = new HashSet<>();
-        if (!lemmas.isEmpty()) {
-            pages.addAll(lemmas.get(0).getPages());
-            IntStream.range(1, lemmas.size()).takeWhile(i -> !pages.isEmpty()).forEach(i -> pages.retainAll(lemmas.get(i).getPages()));
-            if (pages.isEmpty()) {
-                return new SearchResponse(true, 0, new ArrayList<>());
-            }
-        }
-
-        List<SearchData> searchDataList = new ArrayList<>();
-        for (PageEntity page : pages) {
-            SiteEntity site = page.getSite();
-            Document doc = Jsoup.parse(page.getContent());
-            SnippetParser pageSnippet = new SnippetParser(doc, lf, lemmaSet);
-
-            SearchData data = new SearchData();
-            searchDataList.add(data);
-            data.setSite(site.getUrl());
-            data.setSiteName(site.getName());
-            data.setTitle(doc.title());
-            data.setSnippet(pageSnippet.getSnippet());
-
-            //TODO: релевантность
-            float relevance = indexRepository.findAllByPageAndLemmaIn(page, lemmas).stream().map(IndexEntity::getRank).reduce(0F, Float::sum);
-            data.setRelevance(relevance);
-        }
-
-        searchDataList.sort((o1, o2) -> (int) (o2.getRelevance() - o1.getRelevance() * 100));
-        return new SearchResponse(true, searchDataList.size(), searchDataList);
+        List<SearchData> searchDataList = getSearchPages(lemmas, lemmaSet);
+        // TODO: как правильно делать пагинацию
+//        Pageable pageable = PageRequest.of(offset, limit);
+//        Page<SearchData> data = new PageImpl<>(searchDataList, pageable, searchDataList.size());
+        return new SearchResponse(true, searchDataList.size(), pageOfList(searchDataList, offset, limit));
     }
 
     @Override
     public SearchResponse search(String query, String site, Integer offset, Integer limit) {
-        return new SearchResponse();
+        Set<String> lemmaSet = lf.getLemmaSet(query);
+        SiteEntity siteEntity = siteRepository.findByUrlEquals(site);
+        List<LemmaEntity> lemmas = lemmaRepository.findAllByLemmaInAndSiteEqualsOrderByFrequencyAsc(lemmaSet, siteEntity);
+        List<SearchData> searchDataList = getSearchPages(lemmas, lemmaSet);
+        return new SearchResponse(true, searchDataList.size(), pageOfList(searchDataList, offset, limit));
+    }
+
+    private <T> List<T> pageOfList(List<T> searchDataList, int offset, int limit) {
+        PagedListHolder<T> pages = new PagedListHolder<>(searchDataList);
+        pages.setPageSize(limit);
+        pages.setPage(offset);
+        return pages.getPageList();
+    }
+
+    private List<SearchData> getSearchPages(List<LemmaEntity> lemmas, Set<String> lemmaSet) {
+        TreeSet<SearchData> searchDataList = new TreeSet<>(Comparator
+                .comparing(SearchData::getRelevance)
+                .thenComparing(SearchData::getSnippet).reversed());
+
+        HashMap<SiteEntity, Set<PageEntity>> pagesMap = new HashMap<>();
+        lemmas.forEach(i -> {
+            if (pagesMap.containsKey(i.getSite())) {
+                pagesMap.get(i.getSite()).retainAll(i.getIndexes().stream().map(IndexEntity::getPage).collect(Collectors.toList()));
+            } else {
+                Set<PageEntity> list = i.getIndexes().stream().map(IndexEntity::getPage).collect(Collectors.toSet());
+                pagesMap.put(i.getSite(), list);
+            }
+        });
+
+        AtomicReference<Float> maxRelevance = new AtomicReference<>(0F);
+        pagesMap.forEach((site, pages) -> {
+            for (PageEntity page : pages) {
+                Document doc = Jsoup.parse(page.getContent());
+                SnippetParser pageSnippet = new SnippetParser(doc, lf, lemmaSet);
+
+                SearchData data = new SearchData();
+                data.setSite(site.getUrl());
+                data.setSiteName(site.getName());
+                data.setUri(page.getPath());
+                data.setTitle(doc.title());
+                data.setSnippet(pageSnippet.getSnippet());
+                float relevance = indexRepository.findAllByPageAndLemmaIn(page, lemmas).stream().map(IndexEntity::getRank).reduce(0F, Float::sum);
+                if (maxRelevance.get() < relevance){
+                    maxRelevance.set(relevance);
+                }
+                data.setRelevance(relevance);
+                searchDataList.add(data);
+            }
+        });
+
+        searchDataList.forEach(data -> data.setRelevance(maxRelevance.get() / data.getRelevance()));
+        return new ArrayList<>(searchDataList);
     }
 }
 

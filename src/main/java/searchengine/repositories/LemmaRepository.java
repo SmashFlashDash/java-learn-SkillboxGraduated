@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.model.LemmaEntity;
+import searchengine.model.SiteEntity;
 
 import java.util.List;
 
@@ -25,5 +26,6 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Long> {
     void updateBeforeDeleteIndexes(List<Long> indexes);
 
     List<LemmaEntity> findAllByLemmaInOrderByFrequencyAsc(Iterable<String> s);
+    List<LemmaEntity> findAllByLemmaInAndSiteEqualsOrderByFrequencyAsc(Iterable<String> s, SiteEntity site);
 
 }

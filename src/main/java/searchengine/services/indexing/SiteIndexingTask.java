@@ -125,6 +125,8 @@ public class SiteIndexingTask extends AbstractIndexingTask {
         }
 
         Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
+//        String content = doc.select("div[class*=content]").not("nav, aside, header, footer").text();
+//        Map<String, Integer> lemmas = lf.collectLemmas(content);
         synchronized (SiteIndexingTask.class) {
             indexingService.saveLemmasIndexes(page, lemmas);
         }

@@ -1,7 +1,5 @@
 package searchengine.controllers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
@@ -18,12 +16,9 @@ import searchengine.services.StatisticsService;
 @RequestMapping("/api")
 public class ApiController {
 
-    //TODO сделать lemmaFinder componentSpring
-    // занижектить в indexingService
     private final StatisticsService statisticsService;
     private final IndexingService indexingService;
     private final SearchService searchService;
-    Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     @Autowired
     public ApiController(StatisticsService statisticsService,
