@@ -29,15 +29,11 @@ public class SearchServiceImpl implements SearchService {
     private final SiteRepository siteRepository;
     private final LemmaFinder lf;
 
-    // TODO: сортировка расставляется при каждом запросе по разному
     @Override
     public SearchResponse search(String query, Integer offset, Integer limit) {
         Set<String> lemmaSet = lf.getLemmaSet(query);
         List<LemmaEntity> lemmas = lemmaRepository.findAllByLemmaInOrderByFrequencyAsc(lemmaSet);
         List<SearchData> searchDataList = getSearchPages(lemmas, lemmaSet);
-        // TODO: как правильно делать пагинацию
-//        Pageable pageable = PageRequest.of(offset, limit);
-//        Page<SearchData> data = new PageImpl<>(searchDataList, pageable, searchDataList.size());
         return new SearchResponse(true, searchDataList.size(), pageOfList(searchDataList, offset, limit));
     }
 
@@ -81,7 +77,10 @@ public class SearchServiceImpl implements SearchService {
                 SearchData data = new SearchData();
                 data.setSite(site.getUrl());
                 data.setSiteName(site.getName());
-                data.setUri(page.getPath());
+                // TODO: костыль, frontend скаладывает SiteUrl и Path
+                data.setUri(page.getPath().length() > site.getUrl().length() ?
+                        page.getPath().substring(site.getUrl().length()) :
+                        page.getPath());
                 data.setTitle(doc.title());
                 data.setSnippet(pageSnippet.getSnippet());
                 float relevance = indexRepository.findAllByPageAndLemmaIn(page, lemmas).stream().map(IndexEntity::getRank).reduce(0F, Float::sum);
@@ -92,7 +91,6 @@ public class SearchServiceImpl implements SearchService {
                 searchDataList.add(data);
             }
         });
-
         searchDataList.forEach(data -> data.setRelevance(maxRelevance.get() / data.getRelevance()));
         return new ArrayList<>(searchDataList);
     }

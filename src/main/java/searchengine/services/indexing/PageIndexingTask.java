@@ -9,6 +9,7 @@ import searchengine.model.EnumSiteStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.services.IndexingServiceImpl;
+import searchengine.services.utils.JsoupUtil;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -73,9 +74,8 @@ public class PageIndexingTask extends AbstractIndexingTask {
             return false;
         }
 
-        Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
-//        String content = doc.select("div[class*=content]").not("nav, aside, header, footer").text();
-//        Map<String, Integer> lemmas = lf.collectLemmas(content);
+//        Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
+        Map<String, Integer> lemmas = lf.collectLemmas(JsoupUtil.documentContnetSelector(doc).text());
         synchronized (PageIndexingTask.class) {
             indexingService.saveLemmasIndexes(page, lemmas);
         }

@@ -5,7 +5,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ForkJoinPoolFactoryBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import searchengine.services.search.SnippetFormatter;
+import searchengine.services.search.SnippetParser;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
@@ -33,6 +36,8 @@ public class ConfigBeans {
         executor.initialize();
         return executor;
     }
+
+    // TODO: можно закинуть join всех task в один поток threadExecutor
 
     // делать это в другой ветке как фича когда все доделается, чтобы ускорить парсер и потоки не ждали дргу друга
     // TODO: в task можно не ждать join решение по задаче
