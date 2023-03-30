@@ -8,4 +8,6 @@ public interface IndexingService {
     IndexingResponse stopIndexingSites();
 
     IndexingResponse pageIndexing(String url);
+
+    boolean isIndexing();
 }

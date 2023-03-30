@@ -8,13 +8,15 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 
 @Configuration
 public class ConfigBeans {
 
     @Bean
     public ForkJoinPoolFactoryBean forkJoinPoolFactoryBean() {
-        return new ForkJoinPoolFactoryBean();
+        ForkJoinPoolFactoryBean pool = new ForkJoinPoolFactoryBean();
+        return pool;
     }
 
     @Bean

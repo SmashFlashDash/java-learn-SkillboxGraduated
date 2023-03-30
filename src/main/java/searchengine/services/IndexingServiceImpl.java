@@ -52,6 +52,10 @@ public class IndexingServiceImpl implements IndexingService {
     private final LemmaFinder lf;
     Logger logger = LoggerFactory.getLogger(ApiController.class);
 
+    @Override
+    public boolean isIndexing() {
+        return runningThreads.isEmpty();
+    }
 
     @Override
     public IndexingResponse startSitesIndexing() {
@@ -137,7 +141,8 @@ public class IndexingServiceImpl implements IndexingService {
         runningIndexingTasks.remove(task);
     }
 
-    private void threadSiteIndexing(SiteIndexingTask task, SiteEntity siteEntity, SiteData siteData) {
+    @Transactional
+    public void threadSiteIndexing(SiteIndexingTask task, SiteEntity siteEntity, SiteData siteData) {
         runningIndexingTasks.add(task);
         try {
             siteRepository.deleteByName(siteData.getName());
