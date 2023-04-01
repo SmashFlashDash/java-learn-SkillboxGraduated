@@ -2,8 +2,6 @@ package searchengine.services.search;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -20,13 +18,15 @@ public class SnippetFormatter {
         this.text = text;
     }
 
+    // TODO: иногда постфикс предыдущего сниппета совпадает с prefix текущего
+    //  и в итоговом сниппете находятся повторения
     @Override
     public String toString() {
-        TreeSet<Match> matches = snippet.getMatchesSet();
+        List<Match> matches = snippet.getMatches();
 
         StringBuilder builder = new StringBuilder();
-        Match first = matches.first();
-        Match last = matches.last();
+        Match first = matches.get(0);
+        Match last = matches.get(matches.size() - 1);
         int start = Math.max(first.getStart() - suffixLength, 0);
         int end = Math.min(last.getEnd() + suffixLength, text.length());
         String newPrefix = trimPrefix(text.substring(start, first.getStart()));
@@ -36,7 +36,7 @@ public class SnippetFormatter {
         if (first.equals(last)) {
             addBoldWord(text, first, builder);
         } else {
-            addMatchesToSuffix(first, last, matches, builder);
+            addMatchesToSuffix(matches, builder);
         }
         builder.append(newPostfix);
 
@@ -80,21 +80,13 @@ public class SnippetFormatter {
         return part;
     }
 
-
-    // TODO: при начале парсинга перерасчитать длинну suffixLength, на кол-во совпадений
-    //  должен быть общий длинна суффикс ленгс на сниипеет
-    // тоесть если сниппет имеет один matcher его длинна должны пересчитывать а если несколько матчеров
-    // тоже пересчитывается
-    private void addMatchesToSuffix(Match first, Match last, Set<Match> matches, StringBuilder builder) {
-        String midFix = text.substring(first.getStart(), last.getEnd());
-        Match[] matchesArray = matches.toArray(new Match[0]);
+    private void addMatchesToSuffix(Iterable<Match> matches, StringBuilder builder) {
         Match prevMatch = null;
-        int offset = first.getStart();
-        for (Match match : matchesArray) {
+        for (Match match : matches) {
             if (prevMatch != null) {
-                builder.append(midFix, prevMatch.getEnd() - offset, match.getStart() - offset);
+                builder.append(text, prevMatch.getEnd(), match.getStart());
             }
-            addBoldWord(midFix, match, offset, builder);
+            addBoldWord(text, match, builder);
             prevMatch = match;
         }
     }
@@ -104,11 +96,4 @@ public class SnippetFormatter {
         builder.append(text, match.getStart(), match.getEnd());
         builder.append("</b>");
     }
-
-    private void addBoldWord(String text, Match match, int offset, StringBuilder builder) {
-        builder.append("<b>");
-        builder.append(text, match.getStart() - offset, match.getEnd() - offset);
-        builder.append("</b>");
-    }
-
 }

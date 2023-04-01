@@ -84,7 +84,7 @@ public class SearchServiceImpl implements SearchService {
                 data.setTitle(doc.title());
                 data.setSnippet(pageSnippet.getSnippet());
                 float relevance = indexRepository.findAllByPageAndLemmaIn(page, lemmas).stream().map(IndexEntity::getRank).reduce(0F, Float::sum);
-                if (maxRelevance.get() < relevance){
+                if (maxRelevance.get() < relevance) {
                     maxRelevance.set(relevance);
                 }
                 data.setRelevance(relevance);

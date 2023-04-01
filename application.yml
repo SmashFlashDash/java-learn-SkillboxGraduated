@@ -18,7 +18,7 @@ jsoup-settings:
   reffer: http://www.google.com
   socket-timeout: 30000
 search-settings:
-  snippet-length: 100
+  snippet-length: 200
 
 server:
   port: 8080

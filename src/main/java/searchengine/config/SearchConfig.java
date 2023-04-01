@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
+import searchengine.services.search.Snippet;
 import searchengine.services.search.SnippetParser;
 
 import javax.annotation.PostConstruct;
@@ -17,6 +18,7 @@ public class SearchConfig {
 
     @PostConstruct
     private void init() {
-        SnippetParser.setMaxSnippetLength(snippetLength);
+        SnippetParser.setSnippetLength(snippetLength);
+        Snippet.setSnippetLength(snippetLength);
     }
 }

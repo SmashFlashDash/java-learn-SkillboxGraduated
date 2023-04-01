@@ -8,7 +8,6 @@ import org.jsoup.nodes.Document;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 
 @Setter
@@ -43,10 +42,5 @@ public class JsoupConfig {
                 .timeout(getSocketTimeout())
                 .method(Connection.Method.GET)
                 .execute().parse();
-    }
-
-    @PostConstruct
-    public void init(){
-        System.out.println(" ");
     }
 }

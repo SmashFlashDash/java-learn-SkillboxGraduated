@@ -27,7 +27,9 @@ import searchengine.services.indexing.SiteIndexingTask;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,17 +50,17 @@ public class IndexingServiceImpl implements IndexingService {
     @Qualifier("threadExecutor")
     private final ThreadPoolTaskExecutor executor;
     private final Set<AbstractIndexingTask> runningIndexingTasks = Collections.synchronizedSet(new HashSet<>());
-    private final Set<Thread> runningThreads = Collections.synchronizedSet(new HashSet<>());
+    private final Map<AbstractIndexingTask, Future<Void>> mapTaskThread = Collections.synchronizedMap(new HashMap<>());
     private final LemmaFinder lf;
     Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     @Override
     public boolean isIndexing() {
-        return runningThreads.isEmpty();
+        return mapTaskThread.isEmpty();
     }
 
     @Override
-    public IndexingResponse startSitesIndexing() {
+    public IndexingResponse sitesIndexing() {
         List<Site> sitesList = sites.getSites();
         if (!runningIndexingTasks.isEmpty()) {
             throw new OkError("Индексация уже запущена");
@@ -70,36 +72,34 @@ public class IndexingServiceImpl implements IndexingService {
         for (SiteData siteData : sitesData) {
             SiteEntity siteEntity = new SiteEntity(siteData.getName(), siteData.getUrl().toString(), EnumSiteStatus.INDEXING);
             SiteIndexingTask task = new SiteIndexingTask(siteData, siteEntity, jsoupConfig, this, lf);
-            Thread thread = executor.newThread(() -> threadSiteIndexing(task, siteEntity, siteData));
-            executor.submit(thread);
-            runningThreads.add(thread);
+            mapTaskThread.put(task, executor.submit(() -> threadSiteIndexing(task, siteEntity, siteData)));
         }
         return new IndexingResponse(true);
     }
 
-    // TODO: может убрать таск из поля, до того момента как она запустится
-    // можно реализовать поток runningThreads через future и держать поток там, и выполнять stopCompute
-    // и тогда не нужен set с task
     @Override
     public IndexingResponse stopIndexingSites() {
-        if (runningThreads.isEmpty()) {
+        if (isIndexing()) {
             throw new OkError("Индексация не запущена");
         }
         runningIndexingTasks.forEach(AbstractIndexingTask::stopCompute);
-        List<Thread> joinThreads = runningThreads.stream().peek(thread -> {
-            try {
-                thread.join(10000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        // чтобы не лочился runningIndexingTasks в потоках
+        new ArrayList<>(runningIndexingTasks).forEach(task -> {
+            Future<Void> future = mapTaskThread.get(task);
+            if (future != null) {
+                try {
+                    future.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    e.printStackTrace();
+                }
             }
-        }).collect(Collectors.toList());
-        runningThreads.removeAll(joinThreads);
+        });
         return new IndexingResponse(true);
     }
 
     @Override
     public IndexingResponse pageIndexing(String urlString) {
-        if (!runningThreads.isEmpty()) {
+        if (!isIndexing()) {
             throw new OkError("Индексация запущена");
         }
         URL url;
@@ -120,12 +120,11 @@ public class IndexingServiceImpl implements IndexingService {
             deletePage(pageEntity);
         }
         PageIndexingTask task = new PageIndexingTask(url, siteEntity, jsoupConfig, this, lf);
-        Thread thread = executor.newThread(() -> threadPageIndexing(task, siteEntity));
-        executor.execute(thread);
+        mapTaskThread.put(task, executor.submit(() -> threadPageIndexing(task, siteEntity)));
         return new IndexingResponse(true);
     }
 
-    private void threadPageIndexing(PageIndexingTask task, SiteEntity siteEntity) {
+    private Void threadPageIndexing(PageIndexingTask task, SiteEntity siteEntity) {
         runningIndexingTasks.add(task);
         try {
             Boolean res = forkJoinPool.invoke(task);
@@ -139,13 +138,15 @@ public class IndexingServiceImpl implements IndexingService {
         }
         saveSite(siteEntity);
         runningIndexingTasks.remove(task);
+        mapTaskThread.remove(task);
+        return null;
     }
 
     @Transactional
-    public void threadSiteIndexing(SiteIndexingTask task, SiteEntity siteEntity, SiteData siteData) {
+    public Void threadSiteIndexing(SiteIndexingTask task, SiteEntity siteEntity, SiteData siteData) {
         runningIndexingTasks.add(task);
         try {
-            siteRepository.deleteByName(siteData.getName());
+            siteRepository.deleteAllByName(siteData.getName());
             saveSite(siteEntity);
             Boolean res = forkJoinPool.invoke(task);
             if (res) {
@@ -158,13 +159,15 @@ public class IndexingServiceImpl implements IndexingService {
         }
         saveSite(siteEntity);
         runningIndexingTasks.remove(task);
+        // TODO: по звершению уберет task из словаря потоков
+        mapTaskThread.remove(task);
+        return null;
     }
 
     public void saveSite(SiteEntity siteEntity) {
         try {
             siteRepository.save(siteEntity);
         } catch (Throwable e) {
-            // TODO: вылетает ошибка но не падает при сейве определенных Entity
             e.printStackTrace();
         }
     }
@@ -182,7 +185,7 @@ public class IndexingServiceImpl implements IndexingService {
     @Transactional
     public void saveLemmasIndexes(PageEntity page, Map<String, Integer> lemmas) {
         // entityManager.refresh(page);
-         PageEntity freshPage = pageRepository.findById(page.getId()).get();
+        PageEntity freshPage = pageRepository.findById(page.getId()).get();
 //        PageEntity freshPage = pageRepository.getReferenceById(page.getId());
         List<IndexEntity> indexEntities = new ArrayList<>();
         List<LemmaEntity> lemmaEntities = lemmas.entrySet().stream().map(item -> {
