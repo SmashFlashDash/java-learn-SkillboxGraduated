@@ -93,6 +93,7 @@ public class SearchServiceImpl implements SearchService {
         });
         searchDataList.forEach(data -> data.setRelevance(maxRelevance.get() / data.getRelevance()));
         return new ArrayList<>(searchDataList);
+
     }
 }
 

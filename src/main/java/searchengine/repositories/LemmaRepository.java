@@ -28,5 +28,4 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Long> {
     List<LemmaEntity> findAllByLemmaInOrderByFrequencyAsc(Iterable<String> s);
 
     List<LemmaEntity> findAllByLemmaInAndSiteEqualsOrderByFrequencyAsc(Iterable<String> s, SiteEntity site);
-
 }

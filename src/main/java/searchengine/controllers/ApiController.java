@@ -16,6 +16,8 @@ import searchengine.services.StatisticsService;
 @RequestMapping("/api")
 public class ApiController {
 
+    //TODO сделать lemmaFinder componentSpring
+    // занижектить в indexingService
     private final StatisticsService statisticsService;
     private final IndexingService indexingService;
     private final SearchService searchService;

@@ -168,6 +168,7 @@ public class IndexingServiceImpl implements IndexingService {
         try {
             siteRepository.save(siteEntity);
         } catch (Throwable e) {
+            // TODO: вылетает ошибка но не падает при сейве определенных Entity
             e.printStackTrace();
         }
     }

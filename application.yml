@@ -44,5 +44,5 @@ spring:
       mode: never
   # ddl-auto: validate/create, init.mode: never/always надо врыубить если была создана бд
 
-#logging.level.org.hibernate.SQL: DEBUG
+logging.level.org.hibernate.SQL: DEBUG
 #logging.level.org.hibernate.type.descriptor.sql.BasicBinder: TRACE

@@ -42,7 +42,7 @@ public class Snippet implements Comparable<Snippet> {
     }
 
     @Override
-    public int hashCode() {
+    public int hashCode() {4
         return Objects.hash(matches);
     }
 
