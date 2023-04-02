@@ -33,8 +33,8 @@ public class LemmaEntity {
     @OneToMany(mappedBy = "lemma", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     List<IndexEntity> indexes;
 
-    @ManyToMany(mappedBy = "lemmas", fetch = FetchType.LAZY)
-    List<PageEntity> pages;
+//    @ManyToMany(mappedBy = "lemmas", fetch = FetchType.LAZY)
+//    List<PageEntity> pages;
 
     public LemmaEntity(SiteEntity site, String lemma, Integer frequency) {
         this.site = site;

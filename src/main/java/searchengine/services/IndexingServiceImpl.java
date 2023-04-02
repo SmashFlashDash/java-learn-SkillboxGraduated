@@ -3,6 +3,8 @@ package searchengine.services;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.JsoupConfig;
@@ -25,7 +27,9 @@ import searchengine.services.indexing.SiteIndexingTask;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,43 +47,59 @@ public class IndexingServiceImpl implements IndexingService {
     private final IndexRepository indexRepository;
     private final JsoupConfig jsoupConfig;
     private final ForkJoinPool forkJoinPool;
-    private final Set<AbstractIndexingTask> runningTasks = Collections.synchronizedSet(new HashSet<>());
+    @Qualifier("threadExecutor")
+    private final ThreadPoolTaskExecutor executor;
+    private final Set<AbstractIndexingTask> runningIndexingTasks = Collections.synchronizedSet(new HashSet<>());
+    private final Map<AbstractIndexingTask, Future<Void>> mapTaskThread = Collections.synchronizedMap(new HashMap<>());
     private final LemmaFinder lf;
     Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     @Override
-    public IndexingResponse startSitesIndexing() {
+    public boolean isIndexing() {
+        return mapTaskThread.isEmpty();
+    }
+
+    @Override
+    public IndexingResponse sitesIndexing() {
         List<Site> sitesList = sites.getSites();
-        if (!runningTasks.isEmpty()) {
+        if (!runningIndexingTasks.isEmpty()) {
             throw new OkError("Индексация уже запущена");
         } else if (sitesList.isEmpty()) {
             throw new OkError("В конфигурации не указаны сайты для индексировния");
         }
         List<SiteData> sitesData = getSiteConfigs(sitesList);
 
-        List<Thread> threads = new ArrayList<>();
         for (SiteData siteData : sitesData) {
             SiteEntity siteEntity = new SiteEntity(siteData.getName(), siteData.getUrl().toString(), EnumSiteStatus.INDEXING);
             SiteIndexingTask task = new SiteIndexingTask(siteData, siteEntity, jsoupConfig, this, lf);
-            threads.add(new Thread(() -> threadSiteIndexing(task, siteEntity, siteData)));
+            mapTaskThread.put(task, executor.submit(() -> threadSiteIndexing(task, siteEntity, siteData)));
         }
-        threads.forEach(Thread::start);
         return new IndexingResponse(true);
     }
 
     @Override
     public IndexingResponse stopIndexingSites() {
-        if (runningTasks.isEmpty()) {
+        if (isIndexing()) {
             throw new OkError("Индексация не запущена");
         }
-        runningTasks.forEach(AbstractIndexingTask::stopCompute);
-        runningTasks.forEach(AbstractIndexingTask::join);
+        runningIndexingTasks.forEach(AbstractIndexingTask::stopCompute);
+        // чтобы не лочился runningIndexingTasks в потоках
+        new ArrayList<>(runningIndexingTasks).forEach(task -> {
+            Future<Void> future = mapTaskThread.get(task);
+            if (future != null) {
+                try {
+                    future.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
         return new IndexingResponse(true);
     }
 
     @Override
     public IndexingResponse pageIndexing(String urlString) {
-        if (!runningTasks.isEmpty()) {
+        if (!isIndexing()) {
             throw new OkError("Индексация запущена");
         }
         URL url;
@@ -95,20 +115,17 @@ public class IndexingServiceImpl implements IndexingService {
 
         SiteEntity tmpSite = siteRepository.findByName(site.getName());
         SiteEntity siteEntity = tmpSite != null ? tmpSite : new SiteEntity(site.getName(), site.getUrl(), EnumSiteStatus.INDEXING);
-        saveSite(siteEntity);
         PageEntity pageEntity = pageRepository.findByPath(url.toString());
         if (pageEntity != null) {
             deletePage(pageEntity);
         }
         PageIndexingTask task = new PageIndexingTask(url, siteEntity, jsoupConfig, this, lf);
-        Thread thread = new Thread(() -> threadPageUpdate(task, siteEntity));
-        thread.start();
+        mapTaskThread.put(task, executor.submit(() -> threadPageIndexing(task, siteEntity)));
         return new IndexingResponse(true);
     }
 
-    // TODO: запускать ли потоки в ThreadExecutor или forkJoin
-    private void threadPageUpdate(PageIndexingTask task, SiteEntity siteEntity) {
-        runningTasks.add(task);
+    private Void threadPageIndexing(PageIndexingTask task, SiteEntity siteEntity) {
+        runningIndexingTasks.add(task);
         try {
             Boolean res = forkJoinPool.invoke(task);
             if (res) {
@@ -120,14 +137,16 @@ public class IndexingServiceImpl implements IndexingService {
             siteEntity.setStatus(EnumSiteStatus.FAILED);
         }
         saveSite(siteEntity);
-        runningTasks.remove(task);
+        runningIndexingTasks.remove(task);
+        mapTaskThread.remove(task);
+        return null;
     }
 
-    private void threadSiteIndexing(SiteIndexingTask task, SiteEntity siteEntity, SiteData siteData) {
-        runningTasks.add(task);
+    @Transactional
+    public Void threadSiteIndexing(SiteIndexingTask task, SiteEntity siteEntity, SiteData siteData) {
+        runningIndexingTasks.add(task);
         try {
-            // TODO: здесь ошибка
-            siteRepository.deleteByName(siteData.getName());
+            siteRepository.deleteAllByName(siteData.getName());
             saveSite(siteEntity);
             Boolean res = forkJoinPool.invoke(task);
             if (res) {
@@ -139,10 +158,12 @@ public class IndexingServiceImpl implements IndexingService {
             siteEntity.setStatus(EnumSiteStatus.FAILED);
         }
         saveSite(siteEntity);
-        runningTasks.remove(task);
+        runningIndexingTasks.remove(task);
+        // TODO: по звершению уберет task из словаря потоков
+        mapTaskThread.remove(task);
+        return null;
     }
 
-    @Transactional
     public void saveSite(SiteEntity siteEntity) {
         try {
             siteRepository.save(siteEntity);
@@ -152,7 +173,6 @@ public class IndexingServiceImpl implements IndexingService {
         }
     }
 
-    @Transactional
     public void savePage(PageEntity page) {
         logger.info("Вставить в БД: ".concat(page.getPath()));
         pageRepository.save(page);
@@ -167,7 +187,7 @@ public class IndexingServiceImpl implements IndexingService {
     public void saveLemmasIndexes(PageEntity page, Map<String, Integer> lemmas) {
         // entityManager.refresh(page);
         PageEntity freshPage = pageRepository.findById(page.getId()).get();
-
+//        PageEntity freshPage = pageRepository.getReferenceById(page.getId());
         List<IndexEntity> indexEntities = new ArrayList<>();
         List<LemmaEntity> lemmaEntities = lemmas.entrySet().stream().map(item -> {
             LemmaEntity lemma = lemmaRepository.findBySiteIdAndLemma(freshPage.getSite().getId(), item.getKey());
@@ -183,7 +203,7 @@ public class IndexingServiceImpl implements IndexingService {
         indexRepository.saveAll(indexEntities);
     }
 
-    // TODO: сделать триггером или упростить запрос
+    // TODO: сделать триггером или попробовать обьеденить запрос в один
     @Transactional
     public void deletePage(PageEntity pageEntity) {
 //        List<Long> lemmaIds = pageEntity.getLemmas().stream().map(LemmaEntity::getId).collect(Collectors.toList());

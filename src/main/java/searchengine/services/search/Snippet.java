@@ -1,33 +1,35 @@
 package searchengine.services.search;
 
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.*;
 
 @Getter
-class Snippet implements Comparable<Snippet> {
+public class Snippet implements Comparable<Snippet> {
+    @Setter
+    private static int snippetLength;
     private final Set<String> lemmaSet = new HashSet<>();
-    private final Set<Match> matchesSet = new TreeSet<>();
+    private final List<Match> matches = new ArrayList<>();
     private int countUpCaseLetter = 0;
-    @Getter(AccessLevel.PUBLIC)
     @Setter
     private String snippet = "";
 
-    //TODO: начианется ли в сниппете с большой буквы или содержаться ли в matchesList большие буквы
-
-    public void addMatch(Match match) {
-        String lemma = match.getLemma();
-        lemmaSet.add(lemma);
-        matchesSet.add(match);
-        if (match.isStartUpLetter) {
+    public boolean addMatch(Match match) {
+        if (!matches.isEmpty() && match.getEnd() - matches.get(0).getStart() > snippetLength) {
+            return false;
+        }
+        if (Character.isUpperCase(match.getWord().charAt(0))) {
             countUpCaseLetter++;
         }
+        String lemma = match.getLemma();
+        lemmaSet.add(lemma);
+        matches.add(match);
+        return true;
     }
 
-    public TreeSet<Match> getMatchesSet() {
-        return new TreeSet<>(matchesSet);
+    public List<Match> getMatches() {
+        return new ArrayList<>(matches);
     }
 
     @Override
@@ -36,19 +38,19 @@ class Snippet implements Comparable<Snippet> {
         if (!(o instanceof Snippet)) return false;
         Snippet snippet = (Snippet) o;
         return lemmaSet.equals(snippet.lemmaSet) &&
-                matchesSet.equals(snippet.matchesSet);
+                matches.equals(snippet.matches);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(matchesSet);
+        return Objects.hash(matches);
     }
 
     @Override
     public int compareTo(Snippet o) {
         return Comparator.comparing(Snippet::getLemmaSet, Comparator.comparingInt(Set::size))
-                .thenComparing(Snippet::getCountUpCaseLetter)   // начинается ли сниппет с большой буквы
-                .thenComparing(Snippet::getMatchesSet, Comparator.comparing(Set::size))
+                .thenComparing(Snippet::getCountUpCaseLetter)
+                .thenComparing(Snippet::getMatches, Comparator.comparing(List::size))
                 .thenComparing(Snippet::getSnippet, Comparator.comparingInt(String::length))
                 .compare(o, this);
     }

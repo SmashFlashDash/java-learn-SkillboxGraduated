@@ -41,7 +41,7 @@ public class SiteEntity {
     @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     List<PageEntity> pages;
 
-    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "site", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     List<LemmaEntity> lemmas;
 
     public SiteEntity(String name, String url, EnumSiteStatus status) {

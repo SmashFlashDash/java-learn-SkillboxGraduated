@@ -1,7 +1,5 @@
 package searchengine.controllers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +21,6 @@ public class ApiController {
     private final StatisticsService statisticsService;
     private final IndexingService indexingService;
     private final SearchService searchService;
-    Logger logger = LoggerFactory.getLogger(ApiController.class);
 
     @Autowired
     public ApiController(StatisticsService statisticsService,
@@ -41,7 +38,7 @@ public class ApiController {
 
     @GetMapping("/startIndexing")
     public ResponseEntity<IndexingResponse> startIndexing() {
-        return ResponseEntity.ok(indexingService.startSitesIndexing());
+        return ResponseEntity.ok(indexingService.sitesIndexing());
     }
 
     @GetMapping("/stopIndexing")
