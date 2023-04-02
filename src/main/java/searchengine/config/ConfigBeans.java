@@ -4,6 +4,7 @@ package searchengine.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ForkJoinPoolFactoryBean;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.io.IOException;
 
@@ -12,8 +13,8 @@ public class ConfigBeans {
 
     @Bean
     public ForkJoinPoolFactoryBean forkJoinPoolFactoryBean() {
-        final ForkJoinPoolFactoryBean poolFactory = new ForkJoinPoolFactoryBean();
-        return poolFactory;
+        ForkJoinPoolFactoryBean pool = new ForkJoinPoolFactoryBean();
+        return pool;
     }
 
     @Bean
@@ -21,12 +22,23 @@ public class ConfigBeans {
         return LemmaFinder.getInstance();
     }
 
-    // TODO: вставить сюда execitoreThread
-    //  - можно сделать бин котоырй делает set в static поля PAge и UpdateTask
-    //  - чтобы не передвать их констркутором
+    @Bean
+    public ThreadPoolTaskExecutor threadExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setDaemon(true);
+        executor.setCorePoolSize(10);
+        executor.setMaxPoolSize(20);
+        executor.setQueueCapacity(10);
+        executor.initialize();
+        return executor;
+    }
 
-    // сделать чтобы брал релевантность в тэг
-    // подготовить коммит с вопросами
+    // TODO: SnippetParser бывает с предыдущего сниппета суфиикс пост заезжает на следующий сниппет
+    // в SnippetParser.getSnippet если получить несколько Snippet то постфикс прудыдщего может наложиться и будет
+    // повторение, поэтому можно брать первый сниппет наибольший по длинне, поменять сортировку Set<Snippet>
+
+    // TODO: ManyToMany точно ли не нужна, приходится идти циклом по всем значениям и делать запрос
+    //  может с ManyTomany Hibernate быстрее работаетт обьединяя запросы джоином таблиц
 
     // TODO:
     //  SearchService

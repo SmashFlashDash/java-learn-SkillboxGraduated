@@ -4,20 +4,21 @@ indexing-settings:
   sites:
     - url: https://www.bequiet.com/ru
       name: bequiet.com
-#    - url: https://www.lenta.ru
-#      name: Лента.ру
-#      millis: 100
-#    - url: https://www.skillbox.ru
-#      name: Skillbox
-#      millis: 100
-#    - url: https://www.playback.ru
-#      name: PlayBack.Ru
-#      millis: 100
-
+    - url: https://www.lenta.ru
+      name: Лента.ру
+      millis: 100
+    - url: https://www.skillbox.ru
+      name: Skillbox
+      millis: 100
+    - url: https://www.playback.ru
+      name: PlayBack.Ru
+      millis: 100
 jsoup-settings:
   user-agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:25.0) Gecko/20100101 Firefox/25.0
   reffer: http://www.google.com
   socket-timeout: 30000
+search-settings:
+  snippet-length: 200
 
 server:
   port: 8080
@@ -35,13 +36,13 @@ spring:
 #        format_sql: true
         dialect: org.hibernate.dialect.MySQL8Dialect
     hibernate:
-      ddl-auto: create
-    show-sql: true
+      ddl-auto: validate
+#    show-sql: true
     defer-datasource-initialization: true
   sql:
     init:
-      mode: always
+      mode: never
   # ddl-auto: validate/create, init.mode: never/always надо врыубить если была создана бд
 
-logging.level.org.hibernate.SQL: DEBUG
+logging.level.org.hibernate.SQL: TRACE
 #logging.level.org.hibernate.type.descriptor.sql.BasicBinder: TRACE
