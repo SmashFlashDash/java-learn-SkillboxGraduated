@@ -13,7 +13,7 @@ import java.util.stream.IntStream;
 
 public class SnippetParser {
     @Setter
-    private static int snippetLength;
+    private static int maxSnippetLength;
     private final LemmaFinder lf;
     private final Set<String> lemmas;
     private final Set<Snippet> snippetsSet = new TreeSet<>();
@@ -57,8 +57,9 @@ public class SnippetParser {
 
     public String getSnippet() {
         StringBuilder builder = new StringBuilder();
-        snippetsSet.stream().takeWhile(i -> !lemmas.isEmpty() || builder.length() < snippetLength)
-                .filter(i -> i.getLemmaSet().stream().anyMatch(lemmas::contains))
+        snippetsSet.stream().takeWhile(i -> !lemmas.isEmpty() || builder.length() < maxSnippetLength)
+                .filter(i -> i.getLemmaSet().stream().anyMatch(lemmas::contains) &&
+                        builder.length() + i.getSnippetLength() < maxSnippetLength)
                 .map(snippet -> {
                     lemmas.removeAll(snippet.getLemmaSet());
                     String string = new SnippetFormatter(snippet, text).toString();
