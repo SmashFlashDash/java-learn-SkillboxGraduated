@@ -8,7 +8,7 @@ import java.util.*;
 @Getter
 public class Snippet implements Comparable<Snippet> {
     @Setter
-    private static int snippetLength;
+    private static int maxSnippetLength;
     private final Set<String> lemmaSet = new HashSet<>();
     private final List<Match> matches = new ArrayList<>();
     private int countUpCaseLetter = 0;
@@ -16,7 +16,7 @@ public class Snippet implements Comparable<Snippet> {
     private String snippet = "";
 
     public boolean addMatch(Match match) {
-        if (!matches.isEmpty() && match.getEnd() - matches.get(0).getStart() > snippetLength) {
+        if (!matches.isEmpty() && match.getEnd() - matches.get(0).getStart() > maxSnippetLength) {
             return false;
         }
         if (Character.isUpperCase(match.getWord().charAt(0))) {
@@ -32,6 +32,19 @@ public class Snippet implements Comparable<Snippet> {
         return new ArrayList<>(matches);
     }
 
+    public int getSnippetLength() {
+        if (snippet.isEmpty()) {
+            if (matches.isEmpty()) {
+                return 0;
+            } else if (matches.size() == 1) {
+                return matches.get(0).getEnd() - matches.get(0).getStart();
+            } else {
+                return matches.get(matches.size() - 1).getEnd() - matches.get(0).getStart();
+            }
+        }
+        return snippet.length();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -42,7 +55,7 @@ public class Snippet implements Comparable<Snippet> {
     }
 
     @Override
-    public int hashCode() {4
+    public int hashCode() {
         return Objects.hash(matches);
     }
 
