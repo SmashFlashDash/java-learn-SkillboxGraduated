@@ -32,19 +32,4 @@ public class PageEntity {
 
     @OneToMany(mappedBy = "page", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     List<IndexEntity> indexes;
-
-//    @ManyToMany(fetch = FetchType.LAZY)
-//    @JoinTable(
-//            name = "index",
-//            joinColumns = {@JoinColumn(name = "page_id")},
-//            inverseJoinColumns = {@JoinColumn(name = "lemma_id")})
-//    List<LemmaEntity> lemmas;
-
-    public PageEntity(SiteEntity site, String path, Integer code, String content) {
-        this.site = site;
-        this.path = path;
-        this.code = code;
-        this.content = content;
-    }
-
 }

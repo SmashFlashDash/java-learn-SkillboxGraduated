@@ -131,7 +131,6 @@ public class IndexingServiceImpl implements IndexingService {
         return null;
     }
 
-    @Transactional
     public Void threadSiteIndexing(SiteIndexingTask task, SiteEntity siteEntity, SiteData siteData) {
         runningIndexingTasks.add(task);
         try {
@@ -168,27 +167,23 @@ public class IndexingServiceImpl implements IndexingService {
         return pageRepository.existsByPath(path);
     }
 
-    @Transactional
     public void saveLemmasIndexes(PageEntity page, Map<String, Integer> lemmas) {
-        PageEntity freshPage = pageRepository.findById(page.getId()).get();
         List<IndexEntity> indexEntities = new ArrayList<>();
         List<LemmaEntity> lemmaEntities = lemmas.entrySet().stream().map(item -> {
-            LemmaEntity lemma = lemmaRepository.findBySiteIdAndLemma(freshPage.getSite().getId(), item.getKey());
+            LemmaEntity lemma = lemmaRepository.findBySiteIdAndLemma(page.getSite().getId(), item.getKey());
             if (lemma == null) {
-                lemma = new LemmaEntity(freshPage.getSite(), item.getKey(), 1);
+                lemma = new LemmaEntity(page.getSite(), item.getKey(), 1);
             } else {
                 lemma.setFrequency(lemma.getFrequency() + 1);
             }
-            indexEntities.add(new IndexEntity(freshPage, lemma, item.getValue() * 1.0F));
+            indexEntities.add(new IndexEntity(page, lemma, item.getValue() * 1.0F));
             return lemma;
         }).collect(Collectors.toList());
         lemmaRepository.saveAll(lemmaEntities);
         indexRepository.saveAll(indexEntities);
     }
 
-    @Transactional
     public void deletePage(PageEntity pageEntity) {
-//        List<Long> lemmaIds = pageEntity.getLemmas().stream().map(LemmaEntity::getId).collect(Collectors.toList());
         List<Long> lemmaIds = pageEntity.getIndexes().stream().map(i -> i.getLemma().getId()).collect(Collectors.toList());
         pageRepository.delete(pageEntity);
         lemmaRepository.deleteOneFrequencyLemmaByIndexes(lemmaIds);
