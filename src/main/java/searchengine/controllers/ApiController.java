@@ -3,6 +3,7 @@ package searchengine.controllers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import searchengine.dto.error.ErrorResponse;
 import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.search.SearchResponse;
 import searchengine.dto.statistics.StatisticsResponse;
@@ -27,19 +28,32 @@ public class ApiController {
         return ResponseEntity.ok(statisticsService.getStatistics());
     }
 
+    // TODO возвоащает любой тип
     @GetMapping("/startIndexing")
-    public ResponseEntity<IndexingResponse> startIndexing() throws IndexingServiceException {
-        return ResponseEntity.ok(indexingService.sitesIndexing());
+    public ResponseEntity<?> startIndexing() {
+        try {
+            return ResponseEntity.ok(indexingService.sitesIndexing());
+        } catch (IndexingServiceException ex) {
+            return ResponseEntity.ok(new ErrorResponse(false, ex.getMessage()));
+        }
     }
 
     @GetMapping("/stopIndexing")
-    public ResponseEntity<Object> stopIndexing() throws IndexingServiceException {
-        return ResponseEntity.ok(indexingService.stopIndexingSites());
+    public ResponseEntity<?> stopIndexing() {
+        try {
+            return ResponseEntity.ok(indexingService.stopIndexingSites());
+        } catch (IndexingServiceException ex) {
+            return ResponseEntity.ok(new ErrorResponse(false, ex.getMessage()));
+        }
     }
 
     @PostMapping("/indexPage")
-    public ResponseEntity<IndexingResponse> pageIndexing(@RequestParam(name = "url") String url) throws IndexingServiceException {
-        return ResponseEntity.ok(indexingService.pageIndexing(url));
+    public ResponseEntity<?> pageIndexing(@RequestParam(name = "url") String url) {
+        try {
+            return ResponseEntity.ok(indexingService.pageIndexing(url));
+        } catch (IndexingServiceException ex) {
+            return ResponseEntity.ok(new ErrorResponse(false, ex.getMessage()));
+        }
     }
 
     @GetMapping("/search")
