@@ -1,31 +1,23 @@
 package searchengine.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import searchengine.dto.error.ErrorResponse;
 import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.search.SearchResponse;
 import searchengine.dto.statistics.StatisticsResponse;
-import searchengine.services.IndexingService;
-import searchengine.services.SearchService;
-import searchengine.services.SearchServiceImpl;
-import searchengine.services.StatisticsService;
+import searchengine.services.*;
 
 @RestController
 @RequestMapping("/api")
 public class ApiController {
-
-    //TODO сделать lemmaFinder componentSpring
-    // занижектить в indexingService
     private final StatisticsService statisticsService;
     private final IndexingService indexingService;
     private final SearchService searchService;
 
     @Autowired
-    public ApiController(StatisticsService statisticsService,
-                         @Qualifier("indexingServiceImpl") IndexingService indexingService,
-                         SearchServiceImpl searchService) {
+    public ApiController(StatisticsService statisticsService, IndexingService indexingService, SearchServiceImpl searchService) {
         this.statisticsService = statisticsService;
         this.indexingService = indexingService;
         this.searchService = searchService;
@@ -37,18 +29,30 @@ public class ApiController {
     }
 
     @GetMapping("/startIndexing")
-    public ResponseEntity<IndexingResponse> startIndexing() {
-        return ResponseEntity.ok(indexingService.sitesIndexing());
+    public ResponseEntity<?> startIndexing() {
+        try {
+            return ResponseEntity.ok(indexingService.sitesIndexing());
+        } catch (IndexingServiceException ex) {
+            return ResponseEntity.ok(new ErrorResponse(false, ex.getMessage()));
+        }
     }
 
     @GetMapping("/stopIndexing")
-    public ResponseEntity<Object> stopIndexing() {
-        return ResponseEntity.ok(indexingService.stopIndexingSites());
+    public ResponseEntity<?> stopIndexing() {
+        try {
+            return ResponseEntity.ok(indexingService.stopIndexingSites());
+        } catch (IndexingServiceException ex) {
+            return ResponseEntity.ok(new ErrorResponse(false, ex.getMessage()));
+        }
     }
 
     @PostMapping("/indexPage")
-    public ResponseEntity<IndexingResponse> pageIndexing(@RequestParam(name = "url") String url) {
-        return ResponseEntity.ok(indexingService.pageIndexing(url));
+    public ResponseEntity<?> pageIndexing(@RequestParam(name = "url") String url) {
+        try {
+            return ResponseEntity.ok(indexingService.pageIndexing(url));
+        } catch (IndexingServiceException ex) {
+            return ResponseEntity.ok(new ErrorResponse(false, ex.getMessage()));
+        }
     }
 
     @GetMapping("/search")

@@ -3,11 +3,11 @@ package searchengine.services;
 import searchengine.dto.indexing.IndexingResponse;
 
 public interface IndexingService {
-    IndexingResponse sitesIndexing();
+    IndexingResponse sitesIndexing() throws IndexingServiceException;
 
-    IndexingResponse stopIndexingSites();
+    IndexingResponse stopIndexingSites() throws IndexingServiceException;
 
-    IndexingResponse pageIndexing(String url);
+    IndexingResponse pageIndexing(String url) throws IndexingServiceException;
 
     boolean isIndexing();
 }

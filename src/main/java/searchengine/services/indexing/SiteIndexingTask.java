@@ -4,17 +4,14 @@ import org.jsoup.HttpStatusException;
 import org.jsoup.UnsupportedMimeTypeException;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import searchengine.config.JsoupConfig;
-import searchengine.config.LemmaFinder;
-import searchengine.controllers.ApiController;
 import searchengine.dto.indexing.SiteData;
 import searchengine.model.EnumSiteStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.services.IndexingServiceImpl;
 import searchengine.services.utils.JsoupUtil;
+import searchengine.services.utils.LemmaFinder;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -33,15 +30,7 @@ public class SiteIndexingTask extends AbstractIndexingTask {
     private final AtomicBoolean run;
     private final URL url;
     private final LemmaFinder lf;
-    Logger logger = LoggerFactory.getLogger(ApiController.class);
 
-    /**
-     * Создать рекурсивную задачу
-     *
-     * @param site            - сущность в БД сайтай
-     * @param jsoupConfig     - получать настройки Jsoup из конфига
-     * @param indexingService - сервис для записи статусов Site и новых Page
-     */
     public SiteIndexingTask(SiteData siteData, SiteEntity site, JsoupConfig jsoupConfig,
                             IndexingServiceImpl indexingService, LemmaFinder lf) {
         this.siteData = siteData;
@@ -89,7 +78,6 @@ public class SiteIndexingTask extends AbstractIndexingTask {
         }
         UrlType uriType = validateUrl();
         if (!(uriType == UrlType.SITE_PAGE)) {
-            // indexingUrisSet.remove(url.toString());
             return true;
         }
 
@@ -101,7 +89,6 @@ public class SiteIndexingTask extends AbstractIndexingTask {
             doc = jsoupConfig.getJsoupDocument(url.toString(), siteData.getMillis());
             page.setContent(doc.outerHtml());
             page.setCode(doc.connection().response().statusCode());
-            // site.getPages().add(page);
             indexingService.savePage(page);
             indexingService.saveSite(site);
             runningUrls.remove(url.toString());
@@ -113,10 +100,8 @@ public class SiteIndexingTask extends AbstractIndexingTask {
             runningUrls.remove(url.toString());
             return true;
         } catch (UnsupportedMimeTypeException | MalformedURLException e) {
-            // runningUrls.remove(url.toString());
             return true;
-        } catch (IOException e) { // catch (SocketTimeoutException | SocketException | UnknownHostException e)
-            // logger.error(e.getClass().getName() + ":" + e.getMessage());
+        } catch (IOException e) {
             run.set(false);
             site.setStatus(EnumSiteStatus.FAILED);
             site.setLastError(e.getClass().getName() + ":" + e.getMessage());
@@ -125,7 +110,6 @@ public class SiteIndexingTask extends AbstractIndexingTask {
             return false;
         }
 
-//        Map<String, Integer> lemmas = lf.collectLemmas(doc.text());
         Map<String, Integer> lemmas = lf.collectLemmas(JsoupUtil.documentContnetSelector(doc).text());
         synchronized (SiteIndexingTask.class) {
             indexingService.saveLemmasIndexes(page, lemmas);
@@ -139,7 +123,6 @@ public class SiteIndexingTask extends AbstractIndexingTask {
         if (!(url.getHost().equals(uriHost) || url.getHost().endsWith(".".concat(uriHost)))) {
             return UrlType.OTHER_SITE;
         } else if (url.getPath().contains(".") && !url.getPath().endsWith(".html")) {
-            // logger.warn(String.format("File: %s", uri.toString()));
             return UrlType.SITE_FILE;
         } else if (indexingService.isPageExistByPath(url.toString())) {
             return UrlType.PAGE_IN_TABLE;

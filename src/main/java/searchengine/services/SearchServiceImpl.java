@@ -5,7 +5,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.beans.support.PagedListHolder;
 import org.springframework.stereotype.Service;
-import searchengine.config.LemmaFinder;
 import searchengine.dto.search.SearchData;
 import searchengine.dto.search.SearchResponse;
 import searchengine.model.IndexEntity;
@@ -16,6 +15,7 @@ import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.SiteRepository;
 import searchengine.services.search.SnippetParser;
+import searchengine.services.utils.LemmaFinder;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -77,7 +77,6 @@ public class SearchServiceImpl implements SearchService {
                 SearchData data = new SearchData();
                 data.setSite(site.getUrl());
                 data.setSiteName(site.getName());
-                // TODO: костыль, frontend скаладывает SiteUrl и Path
                 data.setUri(page.getPath().length() > site.getUrl().length() ?
                         page.getPath().substring(site.getUrl().length()) :
                         page.getPath());

@@ -10,6 +10,5 @@ import java.util.List;
 
 @Repository
 public interface IndexRepository extends JpaRepository<IndexEntity, Long> {
-
     List<IndexEntity> findAllByPageAndLemmaIn(PageEntity page, Iterable<LemmaEntity> s);
 }
