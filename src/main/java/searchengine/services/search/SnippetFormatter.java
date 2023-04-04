@@ -18,8 +18,6 @@ public class SnippetFormatter {
         this.text = text;
     }
 
-    // TODO: иногда постфикс предыдущего сниппета совпадает с prefix текущего
-    //  и в итоговом сниппете находятся повторения
     @Override
     public String toString() {
         List<Match> matches = snippet.getMatches();

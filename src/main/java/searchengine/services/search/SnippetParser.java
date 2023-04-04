@@ -3,8 +3,8 @@ package searchengine.services.search;
 import lombok.Setter;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
-import searchengine.config.LemmaFinder;
 import searchengine.services.utils.JsoupUtil;
+import searchengine.services.utils.LemmaFinder;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -25,7 +25,6 @@ public class SnippetParser {
 
         Elements elements = JsoupUtil.documentContnetSelector(document);
         this.text = String.join("\n", elements.eachText());
-//        this.text = elements.text();
         findSnippets();
     }
 
@@ -50,10 +49,8 @@ public class SnippetParser {
                 Match match = matches.get(iArray + offset);
                 isAdded = snippet.addMatch(match);
             } while (isAdded && iArray + ++offset < matches.size() - 1);
-            //snippet.setSnippet(snippetToString(snippet));
         });
     }
-
 
     public String getSnippet() {
         StringBuilder builder = new StringBuilder();
