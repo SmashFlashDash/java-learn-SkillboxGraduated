@@ -18,7 +18,7 @@ public class SearchConfig {
 
     @PostConstruct
     private void init() {
-        SnippetParser.setSnippetLength(snippetLength);
-        Snippet.setSnippetLength(snippetLength);
+        SnippetParser.setMaxSnippetLength(snippetLength);
+        Snippet.setMaxSnippetLength(snippetLength);
     }
 }
