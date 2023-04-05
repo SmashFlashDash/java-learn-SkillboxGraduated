@@ -12,7 +12,7 @@ import searchengine.services.IndexingServiceException;
 public class ExceptionAdvice extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(IndexingServiceException.class)
-    ResponseEntity<ErrorResponse> handle(RuntimeException ex, WebRequest request) {
+    public ResponseEntity<ErrorResponse> handle(Exception ex, WebRequest webRequest) {
         return ResponseEntity.ok(new ErrorResponse(false, ex.getMessage()));
     }
 }
