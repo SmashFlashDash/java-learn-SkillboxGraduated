@@ -3,7 +3,6 @@ package searchengine.controllers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import searchengine.dto.error.ErrorResponse;
 import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.search.SearchResponse;
 import searchengine.dto.statistics.StatisticsResponse;
@@ -29,30 +28,18 @@ public class ApiController {
     }
 
     @GetMapping("/startIndexing")
-    public ResponseEntity<?> startIndexing() {
-        try {
-            return ResponseEntity.ok(indexingService.sitesIndexing());
-        } catch (IndexingServiceException ex) {
-            return ResponseEntity.ok(new ErrorResponse(false, ex.getMessage()));
-        }
+    public ResponseEntity<IndexingResponse> startIndexing() throws IndexingServiceException {
+        return ResponseEntity.ok(indexingService.sitesIndexing());
     }
 
     @GetMapping("/stopIndexing")
-    public ResponseEntity<?> stopIndexing() {
-        try {
-            return ResponseEntity.ok(indexingService.stopIndexingSites());
-        } catch (IndexingServiceException ex) {
-            return ResponseEntity.ok(new ErrorResponse(false, ex.getMessage()));
-        }
+    public ResponseEntity<IndexingResponse> stopIndexing() throws IndexingServiceException {
+        return ResponseEntity.ok(indexingService.stopIndexingSites());
     }
 
     @PostMapping("/indexPage")
-    public ResponseEntity<?> pageIndexing(@RequestParam(name = "url") String url) {
-        try {
-            return ResponseEntity.ok(indexingService.pageIndexing(url));
-        } catch (IndexingServiceException ex) {
-            return ResponseEntity.ok(new ErrorResponse(false, ex.getMessage()));
-        }
+    public ResponseEntity<IndexingResponse> pageIndexing(@RequestParam(name = "url") String url) throws IndexingServiceException {
+        return ResponseEntity.ok(indexingService.pageIndexing(url));
     }
 
     @GetMapping("/search")
@@ -62,7 +49,7 @@ public class ApiController {
                                                  @RequestParam(name = "limit", required = false) Integer limit) {
         offset = offset == null ? 0 : offset;
         limit = limit == null ? 20 : limit;
-        if (site != null) {
+        if (site == null) {
             return ResponseEntity.ok(searchService.search(query, site, offset, limit));
         } else {
             return ResponseEntity.ok(searchService.search(query, offset, limit));
