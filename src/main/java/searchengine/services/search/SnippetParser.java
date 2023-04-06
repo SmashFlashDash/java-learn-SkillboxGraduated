@@ -60,7 +60,7 @@ public class SnippetParser {
                 .map(snippet -> {
                     lemmas.removeAll(snippet.getLemmaSet());
                     String string = new SnippetFormatter(snippet, text).toString();
-                    snippet.setSnippet(string);
+                    snippet.setText(string);
                     return string;
                 }).forEach(builder::append);
 
@@ -69,6 +69,6 @@ public class SnippetParser {
             builder.append(String.join("</s>, <s>", lemmas));
             builder.append(".");
         }
-        return builder.toString().replaceAll("\n", " * ");
+        return builder.toString().replace("\n", " * ");
     }
 }

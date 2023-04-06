@@ -50,9 +50,9 @@ public class ApiController {
         offset = offset == null ? 0 : offset;
         limit = limit == null ? 20 : limit;
         if (site == null) {
-            return ResponseEntity.ok(searchService.search(query, site, offset, limit));
-        } else {
             return ResponseEntity.ok(searchService.search(query, offset, limit));
+        } else {
+            return ResponseEntity.ok(searchService.search(query, site, offset, limit));
         }
     }
 }

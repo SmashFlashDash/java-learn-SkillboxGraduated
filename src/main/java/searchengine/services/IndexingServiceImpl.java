@@ -154,7 +154,7 @@ public class IndexingServiceImpl implements IndexingService {
     public void saveSite(SiteEntity siteEntity) {
         try {
             siteRepository.save(siteEntity);
-        } catch (Throwable e) {
+        } catch (RuntimeException e) {
             e.printStackTrace();
         }
     }
@@ -183,11 +183,20 @@ public class IndexingServiceImpl implements IndexingService {
         indexRepository.saveAll(indexEntities);
     }
 
+    @Transactional
     public void deletePage(PageEntity pageEntity) {
-        List<Long> lemmaIds = pageEntity.getIndexes().stream().map(i -> i.getLemma().getId()).collect(Collectors.toList());
+        List<IndexEntity> indexes = pageEntity.getIndexes();
+        for (IndexEntity index : indexes) {
+            LemmaEntity lemma = index.getLemma();
+            if (lemma.getFrequency() <= 1) {
+                lemmaRepository.delete(lemma);
+            } else {
+                lemma.setFrequency(lemma.getFrequency() - 1);
+                lemmaRepository.save(lemma);
+            }
+            indexRepository.delete(index);
+        }
         pageRepository.delete(pageEntity);
-        lemmaRepository.deleteOneFrequencyLemmaByIndexes(lemmaIds);
-        lemmaRepository.updateBeforeDeleteIndexes(lemmaIds);
     }
 
     private List<SiteData> getSiteConfigs(List<Site> sitesList) throws IndexingServiceException {

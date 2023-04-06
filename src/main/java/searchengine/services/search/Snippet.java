@@ -13,7 +13,7 @@ public class Snippet implements Comparable<Snippet> {
     private final List<Match> matches = new ArrayList<>();
     private int countUpCaseLetter = 0;
     @Setter
-    private String snippet = "";
+    private String text = "";
 
     public boolean addMatch(Match match) {
         if (!matches.isEmpty() && match.getEnd() - matches.get(0).getStart() > maxSnippetLength) {
@@ -33,7 +33,7 @@ public class Snippet implements Comparable<Snippet> {
     }
 
     public int getSnippetLength() {
-        if (snippet.isEmpty()) {
+        if (text.isEmpty()) {
             if (matches.isEmpty()) {
                 return 0;
             } else if (matches.size() == 1) {
@@ -42,7 +42,7 @@ public class Snippet implements Comparable<Snippet> {
                 return matches.get(matches.size() - 1).getEnd() - matches.get(0).getStart();
             }
         }
-        return snippet.length();
+        return text.length();
     }
 
     @Override
@@ -64,7 +64,7 @@ public class Snippet implements Comparable<Snippet> {
         return Comparator.comparing(Snippet::getLemmaSet, Comparator.comparingInt(Set::size))
                 .thenComparing(Snippet::getCountUpCaseLetter)
                 .thenComparing(Snippet::getMatches, Comparator.comparing(List::size))
-                .thenComparing(Snippet::getSnippet, Comparator.comparingInt(String::length))
+                .thenComparing(Snippet::getText, Comparator.comparingInt(String::length))
                 .compare(o, this);
     }
 }
